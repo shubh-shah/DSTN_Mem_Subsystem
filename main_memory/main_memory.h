@@ -1,6 +1,12 @@
 #ifndef MAIN_MEM_H
 #define MAIN_MEM_H
 
+#include <stdint.h>
+#include <stdbool.h>
+
+#include "mem_struct.h"
+#include "task.h"
+
 #define MM_SIZE (32*1024*1024)          //32MB
 #define PG_SIZE (512)                   //512B
 #define NUM_FRAMES (MM_SIZE/PG_SIZE)    //64K
@@ -27,27 +33,44 @@
     //DO we want multiple size pages?
 */
 
-typedef struct{
-    char memory[MM_SIZE];
-} main_memory;
 
 /*
     Create and init Frame Tables
 
 */
+extern int get_frame_number_mem(memory_subsystem* main_mem, task_struct* task, int page_no);
 
-extern void init_main_memory(main_memory mem);
+extern void do_page_fault(memory_subsystem* main_mem, task_struct* task, int page_no);
 
-extern int find_free_frame();
 
-extern int get_frame_number_from_pg_number_main_memory(main_memory mem,int page_number);
 
-// extern char load_byte_mem(main_memory mem, int physical_address);
 
-// extern void store_byte_mem(main_memory mem, int page_table_base_register, int page_table_length_register, int linear_address, char data);
+
+
+// extern void init_main_memory(memory_subsystem mem);
+
+// extern int find_free_frame();
+
+
+
+// extern char load_byte_mem(memory_subsystem mem, int physical_address);
+
+// extern void store_byte_mem(memory_subsystem mem, int page_table_base_register, int page_table_length_register, int linear_address, char data);
 
 // extern char* retreive_block(int start_add,int length);
 
 // extern void store_block(int start_add,int length, char* data);
+
+
+//Useful stuff from linux kernel:
+
+
+// extern int nr_swap_pages;
+// extern int nr_free_pages;
+// extern unsigned long free_page_list;
+// extern inline unsigned long get_free_page(int priority);
+// extern void free_page(unsigned long addr);
+
+
 
 #endif

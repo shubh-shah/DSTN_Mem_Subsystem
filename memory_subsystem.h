@@ -1,23 +1,24 @@
 #ifndef MEM_SUBSYS_H
 #define MEM_SUBSYS_H
 
+#include <stdint.h>
+#include <stdbool.h>  
+
+#include "task.h"
+#include "mem_struct.h"
+
 #include "cache/tlb.h"
 // #include "cache/l1_cache.h"
 // #include "cache/l2_cache.h"
 #include "main_memory/main_memory.h"
 // #include "sec_memory/sec_memory.h"
 
-typedef struct{
-    trans_lookaside_buff tlb;
-    // l1_cache l1cache;
-    // l2_cache l2cache;
+extern void init_memory_subsystem(memory_subsystem* mem);
 
-    main_memory main_mem;
-    // sec_memory sec_mem;
-} memory_subsystem;
 
-extern char load_byte(memory_subsystem mem, int page_table_base_register, int page_table_length_register, int linear_address);
+#define load_byte(mem, task, linear_address) load_store_byte(mem, task, linear_address, true)
+#define store_byte(mem, task, linear_address) load_store_byte(mem, task, linear_address, false)
 
-extern void store_byte(memory_subsystem mem, int page_table_base_register, int page_table_length_register, int linear_address, char data);
+extern bool load_store_byte(memory_subsystem* mem, task_struct* task, unsigned int linear_address, bool load);
 
 #endif
