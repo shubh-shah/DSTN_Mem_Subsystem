@@ -2,13 +2,15 @@
 #define MEM_STRUCT_H
 
 #include <stdint.h>
+#include "main_memory.h"
+#include "tlb.h"
 
 typedef struct{
-    uint8_t* tlb;
+    trans_look_buff* tlb;
     // l1_cache l1cache;
     // l2_cache l2cache;
 
-    uint8_t* main_mem;
+    main_memory* main_mem;
     // sec_memory sec_mem;
 
     uint32_t reg;//make this byte sized?

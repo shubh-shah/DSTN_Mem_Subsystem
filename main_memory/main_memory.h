@@ -3,44 +3,62 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
-#include "mem_struct.h"
 #include "task.h"
+#include "tlb.h"
 
 #define MM_SIZE (32*1024*1024)          //32MB
 #define PG_SIZE (512)                   //512B
-#define NUM_FRAMES (MM_SIZE/PG_SIZE)    //64K
 
+//Page Table Constants
 #define PG_TBL_ENTRY_SIZE 4
 #define NUM_PG_TBL_ENTRIES_PER_PG (PG_SIZE/PG_TBL_ENTRY_SIZE)
 
-#define FRAME_TBL_START 0
-#define FRAME_TBL_END (NUM_FRAMES*4+FRAME_TABLE_START)
+//Frame Table Constants
+#define FRAME_TBL_ENTRY_SIZE 4
+#define NUM_FRAMES (MM_SIZE/PG_SIZE)    //64K
+
+//ERROR CODES:
+#define INVALID_REF (UINT32_MAX-1)
+#define PAGE_FAULT UINT32_MAX
 
 /*
-    //Starting 10 Bytes for process details : PTBR, PTLR
-    //Bits required for logical address: 32 (2,7,7,7,9)
-    //Bits for offset: 9
-    //Bits to address a page:32-9=23
-    //Bits required for physical address: 25
+    Memory Structure:
+    Starting 10 Bytes for process details : PTBR, PTLR
+    Bits required for logical address: 32 (2,7,7,7,9)
+    Bits for offset: 9
+    Bits to address a page:32-9=23
+    Bits required for physical address: 25
 
     Next 4*64KB for Frame Table:
         FRAME TABLE Entry(4Bytes): Valid-1,PgNo-23,PID-8
         Pages required: 4*64K/512 = 4*64*2=512
-    Free frame list??
-    PAGE TABLE Entry(4Bytes): FrameNo-16,Global-1,Dirty-1,LRUbits:??,Caching-1,Protection-??,Valid-1 (12 bits left)
-    PAGE DIR Entry(4Bytes): FrameNo-16,LRUbits:??,Caching-1,Protection-??,Valid-1
-    //DO we want multiple size pages?
+    PAGE TABLE Entry(4Bytes): FrameNo:0-15,Valid-16,Global-17,Dirty-18,LRUbits:??,Caching-1,Protection-?? (12 bits left)
+    PAGE DIR Entry(4Bytes): FrameNo-0-15,Valid-16,LRUbits:??,Caching-1,Protection-??
+    //Do we want multiple size pages?
+    //Free frame list??
 */
 
+typedef struct{
+    uint32_t page_number;
+} frame_table_entry;
+
+typedef struct{
+    frame_table_entry frame_table[NUM_FRAMES];
+    uint8_t mem_arr[MM_SIZE];
+}main_memory;
+
+#define is_bad_frame(frame_no) (frame_no >= NUM_FRAMES)
+
+//Functions:
 
 /*
     Create and init Frame Tables
 
 */
-extern int get_frame_number_mem(memory_subsystem* main_mem, task_struct* task, int page_no);
 
-extern void do_page_fault(memory_subsystem* main_mem, task_struct* task, int page_no);
+extern int do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t page_no);
+
+extern void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t linear_address);
 
 
 

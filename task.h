@@ -3,8 +3,8 @@
 
 typedef struct{
     int pid;
-    int ptbr;
-    int ptlr;//Required?
+    uint32_t ptbr;
+    uint32_t ptlr;//Required?
     int status;//READY, WAITING FOR IO
 } task_struct;
 
