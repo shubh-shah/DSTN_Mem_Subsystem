@@ -1,5 +1,6 @@
 #include "main_memory.h"
 #include <pthread.h>
+#include <malloc.h>
 
 extern void init_main_memory(main_memory* main_mem){
     main_mem->free_frames = NUM_FRAMES;
@@ -59,7 +60,30 @@ struct pass_pg_fault{
     bool is_pgtbl;
     task_struct* task;
 };
-
+//Synchronistaion problems??? Lock a page table????
+void* _do_page_fault(void* args){ 
+    uint32_t linear_address = ((struct pass_pg_fault*) args)->linear_address;
+    uint32_t* entry = ((struct pass_pg_fault*) args)->invalid_entry;
+    bool is_pgtbl = ((struct pass_pg_fault*) args)->is_pgtbl;
+    main_memory* main_mem = ((struct pass_pg_fault*) args)->main_mem;
+    task_struct* task = ((struct pass_pg_fault*) args)->task;
+    free((struct pass_pg_fault*) args);
+    if(is_valid_entry(*entry)){
+        return NULL;
+    }
+    uint32_t frame_no = get_zeroed_page(main_mem, task, linear_address);
+    // if(!is_valid_frame_no(frame_no)){
+    //     //Decide
+    //     printf("Page Fault : Couldn't allocate a frame");
+    //     return NULL;
+    // }
+    //Set the entry:
+    *entry = frame_no|VALID_MASK;
+    if(!is_pgtbl){
+        swap_in(main_mem, frame_no, linear_address);
+    }
+    return NULL;
+}
 void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl){
     if(is_valid_entry(*invalid_entry)){
         return;
@@ -74,78 +98,27 @@ void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_e
     args->is_pgtbl = is_pgtbl;
     args->main_mem = main_mem;
     args->task = task;
-    pthread_create(&tid_listen,&attr,do_page_fault,(void*)args);
+    pthread_create(&tid_listen,&attr,_do_page_fault,(void*)args);
 }
 
-//Synchronistaion problems??? Lock a page table????
-void __do_page_fault(void* args){ 
-    uint32_t linear_address = ((struct pass_pg_fault*) args)->linear_address;
-    uint32_t* entry = ((struct pass_pg_fault*) args)->invalid_entry;
-    bool is_pgtbl = ((struct pass_pg_fault*) args)->is_pgtbl;
-    main_memory* main_mem = ((struct pass_pg_fault*) args)->main_mem;
-    task_struct* task = ((struct pass_pg_fault*) args)->task;
-    free((struct pass_pg_fault*) args);
-    if(is_valid_entry(*entry)){
-        return;
-    }
-	if (linear_address < TASK_SIZE) {
-        uint32_t frame_no = get_zeroed_page(main_mem, task);
-        if(!is_valid_frame_no(frame_no)){
-            ERRORR;
+uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t linear_address){
+    if(main_mem->free_frames == 0){     
+        if (task->frames_used < MAX_FRAMES_PER_TASK) {
+            replace_a_global_frame;
+            //Check for min frame count here
         }
-        //Set the entry:
-        *entry = frame_no|VALID_MASK;
-        if(!is_pgtbl){
-            swap_in();
+        else{
+            replace_a_local_frame;
         }
-        return;
-	}
-}
-
-uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task){
-    if(main_mem->free_frames == 0){
-        replace_a_frame;
     }
     for(uint32_t i=0;i<NUM_FRAMES;i++){
         if(!main_mem->frame_table[i].valid){
+            task->frames_used++;
             main_mem->frame_table[i].valid = 1;
-            main_mem->frame_table[i].page_number = ;//What to do for pages of page tables? 
+            main_mem->frame_table[i].page_number = linear_address>>PT_SHIFT;
             main_mem->frame_table[i].pid = task->pid;
             main_mem->free_frames--;
             return i;
         }
     }
-    return 0xFFFFFFFF;
 }
-
-
-// void init_main_memory(memory_subsystem mem){
-//     bzero(mem.memory,MM_SIZE);
-//     //Make all frames coressponding to frame table valid SHould we do this??
-//     for(int i=0;i<NUM_FRAMES/PG_SIZE;i++){
-//         mem.memory[FRAME_TBL_START+i*4]=1<<8;//Set valid
-//     }
-// }
-
-// int find_free_frame(memory_subsystem mem){
-//     for(int i=0;i<NUM_FRAMES;i++){
-//         if((1<<8)^mem.memory[FRAME_TBL_START+4*i]){
-//             return i;
-//         }
-//     }
-//     return INVALID;
-// }
-
-// int get_frame_no_from_pg_table_entry(int pg_dir_offset,int ptbr,int ptlr){
-//     // for(i=0;i<4)
-//     if(pg_dir_0_entry<ptlr){ //or should it be pg_dir_offset?
-//         load_byte_mem(mem.mem,ptbr+4*pg_dir_0_entry); //get 4 bytes;
-//     }
-//     //check permission and valid and stuff and raise signals of page fault
-// }
-
-// char load_byte_mem(memory_subsystem mem, int physical_address){
-
-// }
-
-// void store_byte_mem(memory_subsystem mem, int page_table_base_register, int page_table_length_register, int linear_address, char data);

@@ -1,4 +1,5 @@
 #include "memory_subsystem.h"
+#include <malloc.h>
 
 extern void init_memory_subsystem(memory_subsystem* mem){
     mem->tlb = malloc(sizeof(trans_look_buff));
@@ -23,7 +24,7 @@ restart:
     //Split Linear Address
     offset = linear_address & ((uint32_t)0x1FF);
     frame_no = get_frame_no_tlb(mem->tlb,task,linear_address);
-    if(is_bad_frame(frame_no)){         //TLB Miss
+    if(!is_valid_frame_no(frame_no)){         //TLB Miss
         int error;
         if(error = do_page_table_walk(mem->main_mem,mem->tlb,task,linear_address)){     //Page fault/Invalid Ref
             mem->reg = error;    //The error code is forwarded

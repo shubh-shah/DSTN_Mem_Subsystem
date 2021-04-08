@@ -1,8 +1,11 @@
+#ifndef PAGING_H
+#define PAGING_H
+
 #include <stdint.h>
 #include <stdbool.h>
 #define MM_SIZE (32*1024*1024)          //32MB
 #define PG_SIZE 512                  //512B
-#define TASK_SIZE (4*1024*1024*1024)
+
 
 //Page Table Constants
 #define PG_TBL_ENTRY_SIZE 4
@@ -43,7 +46,7 @@ pt
 */
 
 typedef struct{
-    uint32_t page_number;
+    uint32_t page_number;   //Irrelevent for frames with page tables; technically would have page_no of latest page accesed-Could be useful for LRU
     int pid;
     bool valid;
 } frame_table_entry;
@@ -59,7 +62,9 @@ typedef struct{
 //If doesn't work, change to: entry = *((uint32_t*)(main_mem->mem_arr+ptbr+PG_TBL_ENTRY_SIZE*pg_dir_offset));-Incorrect as frame no only, not address of frame
 
 #define pld_index(linear_address) ((linear_address >> PLD_SHIFT) & (ENTRY_PER_PG-1))
-#define pmd_entry(mem_begin, dir_entry, linear_address) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+pld_index(linear_address))
+#define pld_entry(mem_begin, dir_entry, linear_address) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+pld_index(linear_address))
 
 #define pt_index(linear_address) ((linear_address >> PT_SHIFT) & (ENTRY_PER_PG-1))
 #define pt_entry(mem_begin, dir_entry, linear_address) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+pt_index(linear_address))
+
+#endif

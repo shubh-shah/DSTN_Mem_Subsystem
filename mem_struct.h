@@ -2,8 +2,8 @@
 #define MEM_STRUCT_H
 
 #include <stdint.h>
-#include "main_memory.h"
-#include "tlb.h"
+#include "mm/main_memory.h"
+#include "cache/tlb.h"
 
 typedef struct{
     trans_look_buff* tlb;

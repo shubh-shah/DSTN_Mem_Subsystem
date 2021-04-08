@@ -4,8 +4,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "paging.h"
-#include "task.h"
-#include "tlb.h"
+#include "../task.h"
+#include "../cache/tlb.h"
+
+// #define TASK_SIZE -Is size of a tak to be limited?
+#define MAX_FRAMES_PER_TASK ???
+#define MIN_FRAMES_PER_TASK ???
 
 //ERROR CODES:
 #define INVALID_REF 1
@@ -18,32 +22,15 @@ typedef struct{
 }main_memory;
 
 
-//main_mem.c
+//In main_mem.c
 extern void init_main_memory(main_memory* main_mem);
-
 extern int do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address);
-
 extern void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl);
+extern uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t linear_address);
 
-extern uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task);
-
-
-
-
-
-// extern int find_free_frame();
-
-
-
-// extern char load_byte_mem(memory_subsystem mem, int physical_address);
-
-// extern void store_byte_mem(memory_subsystem mem, int page_table_base_register, int page_table_length_register, int linear_address, char data);
-
-// extern char* retreive_block(int start_add,int length);
-
-// extern void store_block(int start_add,int length, char* data);
-
-
+//In swap.c
+extern void swap_in(main_memory* main_mem, uint32_t frame_no, uint32_t linear_address);
+extern void swap_out(main_memory* main_mem, uint32_t frame_no, uint32_t linear_address);
 //Useful stuff from linux kernel:
 
 
