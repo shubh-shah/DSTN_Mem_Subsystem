@@ -1,119 +1,123 @@
 #include "main_memory.h"
+#include <pthread.h>
+
+extern void init_main_memory(main_memory* main_mem){
+    main_mem->free_frames = NUM_FRAMES;
+    for(int i=0;i<NUM_FRAMES;i++){
+        main_mem->frame_table[i].valid = 0;
+    }
+}
 
 /*
     Input:
         Page No. (23 bits)
     Returns:
-        Successful: 0
-        Invalid Refrence: UINT32_MAX-1 (FFFFFFFE)
-        Page Fault: UINT32_MAX (FFFFFFFF)
+        Successful 0
+        Invalid Refrence
+        Page Fault
 */
-int do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t page_no){
-    uint8_t pg_tbl_offset = (page_no)&(0x7F);
-    page_no=page_no>>7;
-    uint8_t pg_dir_offset[3];
-    pg_dir_offset[2] = (page_no)&(0x7F);
-    page_no=page_no>>7;
-    pg_dir_offset[1] = (page_no)&(0x7F);
-    page_no=page_no>>7;
-    pg_dir_offset[0] = (page_no)&(0x7F);
+int do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address){
+    //RD WR PERMISSION CHECK?
+    if(pgd_index(linear_address) >= task->ptlr)           //Doubt??
+        return INVALID_REF;            //Invalid Reference
 
-    uint32_t pbr = task->ptbr;
-    uint32_t plr = task->ptlr;
-    for(int i=0;i<3;i++){
-        if((pbr = traverse_pgdir(main_mem,pg_dir_offset[i],pbr,plr)) >= NUM_FRAMES)
-            return pbr;
-        plr = NUM_PG_TBL_ENTRIES_PER_PG;    //Change??
+    uint32_t* pgd_ent = pgd_entry(task, linear_address);
+    if(!is_valid_entry(*pgd_ent)){
+        do_page_fault(main_mem, task, pgd_ent, linear_address, 2);
+        return PAGE_FAULT;
     }
 
-    if(pg_tbl_offset >= plr)           //Doubt??
-        return INVALID_REF;            //Invalid Reference
-    uint32_t page_table_entry = *((uint32_t*)(main_mem->mem_arr+pbr+PG_TBL_ENTRY_SIZE*pg_tbl_offset));
-    if(page_table_entry^(0x10000))
-        return PAGE_FAULT;              //Page Fault
-    insert_tlb_entry(tlb, task, page_no, page_table_entry);
+    uint32_t* pmd_ent = pmd_entry(main_mem->mem_arr, *pgd_ent, linear_address);
+    if(!is_valid_entry(*pmd_ent)){
+        do_page_fault(main_mem, task, pmd_ent, linear_address, 2);
+        return PAGE_FAULT;
+    }
+
+    uint32_t* pld_ent = pld_entry(main_mem->mem_arr, *pmd_ent, linear_address);
+    if(!is_valid_entry(*pld_ent)){
+        do_page_fault(main_mem, task, pld_ent, linear_address, 1);
+        return PAGE_FAULT;
+    }
+    
+    uint32_t* pt_ent = pt_entry(main_mem->mem_arr, *pld_ent, linear_address);
+    if(!is_valid_entry(*pt_ent)){
+        do_page_fault(main_mem, task, pt_ent, linear_address, 0);
+        return PAGE_FAULT;
+    }
+    insert_tlb_entry(tlb, task, linear_address, *pt_ent);
     return 0;
 }
 
 /*
-    Input:
-        Index in the page table/Dir (7 bit)
-    Returns:
-        Successful: Frame Number of the required page (16 bits)
-        Invalid Refrence: UINT32_MAX-1 (FFFFFFFE)
-        Page Fault: UINT32_MAX (FFFFFFFF)
-*/
-uint32_t traverse_pgdir(main_memory* main_mem,uint8_t pg_dir_offset,uint32_t ptbr,uint32_t ptlr){
-    if(pg_dir_offset >= ptlr)           //Doubt??
-        return INVALID_REF;            //Invalid Reference
-    
-    uint32_t entry = *((uint32_t*)(main_mem->mem_arr+ptbr+PG_TBL_ENTRY_SIZE*pg_dir_offset));
-    if(entry^(0x10000))
-        return PAGE_FAULT;              //Page Fault
-    return entry&((uint32_t)0xFFFF);
+    This routine handles page faults.  
+    It creates a different thread, passes all arguments to it and returns
+ */
+struct pass_pg_fault{
+    main_memory* main_mem;
+    uint32_t* invalid_entry;
+    uint32_t linear_address;
+    bool is_pgtbl;
+    task_struct* task;
+};
+
+void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl){
+    if(is_valid_entry(*invalid_entry)){
+        return;
+    }
+    pthread_t tid_listen;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    struct pass_pg_fault* args = malloc(sizeof(struct pass_pg_fault));
+    args->invalid_entry = invalid_entry;
+    args->linear_address = linear_address;
+    args->is_pgtbl = is_pgtbl;
+    args->main_mem = main_mem;
+    args->task = task;
+    pthread_create(&tid_listen,&attr,do_page_fault,(void*)args);
 }
 
-/*
-    From Linux 1.0 Kernel: do_no_page
-    This function would fork for sec mem access
-*/
-void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t linear_address)
-{
-	unsigned long tmp;
-	unsigned long page;
-	struct vm_area_struct * mpnt;
-
-	page = get_empty_pgtable(tsk,address);
-	if (!page)
-		return;
-	page &= PAGE_MASK;
-	page += PAGE_PTR(address);
-	tmp = *(unsigned long *) page;
-	if (tmp & PAGE_PRESENT)
-		return;
-	++tsk->rss;
-	if (tmp) {
-		++tsk->maj_flt;
-		swap_in((unsigned long *) page);
-		return;
+//Synchronistaion problems??? Lock a page table????
+void __do_page_fault(void* args){ 
+    uint32_t linear_address = ((struct pass_pg_fault*) args)->linear_address;
+    uint32_t* entry = ((struct pass_pg_fault*) args)->invalid_entry;
+    bool is_pgtbl = ((struct pass_pg_fault*) args)->is_pgtbl;
+    main_memory* main_mem = ((struct pass_pg_fault*) args)->main_mem;
+    task_struct* task = ((struct pass_pg_fault*) args)->task;
+    free((struct pass_pg_fault*) args);
+    if(is_valid_entry(*entry)){
+        return;
+    }
+	if (linear_address < TASK_SIZE) {
+        uint32_t frame_no = get_zeroed_page(main_mem, task);
+        if(!is_valid_frame_no(frame_no)){
+            ERRORR;
+        }
+        //Set the entry:
+        *entry = frame_no|VALID_MASK;
+        if(!is_pgtbl){
+            swap_in();
+        }
+        return;
 	}
-	address &= 0xfffff000;
-	tmp = 0;
-	for (mpnt = tsk->mmap; mpnt != NULL; mpnt = mpnt->vm_next) {
-		if (address < mpnt->vm_start)
-			break;
-		if (address >= mpnt->vm_end) {
-			tmp = mpnt->vm_end;
-			continue;
-		}
-		if (!mpnt->vm_ops || !mpnt->vm_ops->nopage) {
-			++tsk->min_flt;
-			get_empty_page(tsk,address);
-			return;
-		}
-		mpnt->vm_ops->nopage(error_code, mpnt, address);
-		return;
-	}
-	if (tsk != current)
-		goto ok_no_page;
-	if (address >= tsk->end_data && address < tsk->brk)
-		goto ok_no_page;
-	if (mpnt && mpnt == tsk->stk_vma &&
-	    address - tmp > mpnt->vm_start - address &&
-	    tsk->rlim[RLIMIT_STACK].rlim_cur > mpnt->vm_end - address) {
-		mpnt->vm_start = address;
-		goto ok_no_page;
-	}
-	tsk->tss.cr2 = address;
-	current->tss.error_code = error_code;
-	current->tss.trap_no = 14;
-	send_sig(SIGSEGV,tsk,1);
-	if (error_code & 4)	/* user level access? */
-		return;
-ok_no_page:
-	++tsk->min_flt;
-	get_empty_page(tsk,address);
 }
+
+uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task){
+    if(main_mem->free_frames == 0){
+        replace_a_frame;
+    }
+    for(uint32_t i=0;i<NUM_FRAMES;i++){
+        if(!main_mem->frame_table[i].valid){
+            main_mem->frame_table[i].valid = 1;
+            main_mem->frame_table[i].page_number = ;//What to do for pages of page tables? 
+            main_mem->frame_table[i].pid = task->pid;
+            main_mem->free_frames--;
+            return i;
+        }
+    }
+    return 0xFFFFFFFF;
+}
+
 
 // void init_main_memory(memory_subsystem mem){
 //     bzero(mem.memory,MM_SIZE);

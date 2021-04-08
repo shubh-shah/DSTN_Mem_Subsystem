@@ -1,5 +1,15 @@
 #include "memory_subsystem.h"
 
+extern void init_memory_subsystem(memory_subsystem* mem){
+    mem->tlb = malloc(sizeof(trans_look_buff));
+    init_tlb(mem->tlb);
+    // l1_cache l1cache;
+    // l2_cache l2cache;
+    mem->main_mem = malloc(sizeof(main_memory));
+    init_main_memory(mem->main_mem);
+    // sec_memory sec_mem;
+}
+
 /*
     Input:
         Linear address = 32 bits (4bytes-int)
@@ -8,25 +18,21 @@
         Failure(1): Value of mem->reg set to error code
 */
 bool load_store_byte(memory_subsystem* mem, task_struct* task, uint32_t linear_address, bool load){
-    uint32_t offset,page_no,frame_no;
+    uint32_t offset,frame_no;
 restart:
     //Split Linear Address
-    offset = linear_address&((uint32_t)0x1FF);
-    page_no = linear_address>>9;
-    frame_no = get_frame_no_tlb(mem->tlb,task,page_no);
+    offset = linear_address & ((uint32_t)0x1FF);
+    frame_no = get_frame_no_tlb(mem->tlb,task,linear_address);
     if(is_bad_frame(frame_no)){         //TLB Miss
         int error;
-        if(error = do_page_table_walk(mem->main_mem,mem->tlb,task,page_no)){     //Page fault/Invalid Ref
-            if(error == PAGE_FAULT){
-                do_page_fault(mem,task,linear_address);
-            }
+        if(error = do_page_table_walk(mem->main_mem,mem->tlb,task,linear_address)){     //Page fault/Invalid Ref
             mem->reg = error;    //The error code is forwarded
             return 1;
         }
         //Restart instruction
         goto restart;
     }
-    uint32_t physical_address = (frame_no<<9)+offset;
+    uint32_t physical_address = (frame_no<<PT_SHIFT)+offset;
     //Return value would be success or failure
     if(!load_store_l1cache(mem,physical_address)){
         return 0;
