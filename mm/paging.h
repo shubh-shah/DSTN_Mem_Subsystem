@@ -38,17 +38,18 @@ pt
     Next 4*64KB for Frame Table:
         FRAME TABLE Entry(4Bytes): Valid-1,PgNo-23,PID-8
         Pages required: 4*64K/512 = 4*64*2=512
-    PAGE TABLE Entry(4Bytes): FrameNo:0-15,Valid-16,Global-17,Dirty-18,LRUbits:??,Caching-1,Protection-?? (12 bits left)
+    PAGE TABLE Entry(4Bytes): FrameNo:0-15,Valid-16,Global-17,Dirty-18,Caching-1,Protection-?? (12 bits left)
     PAGE DIR Entry(4Bytes): FrameNo-0-15,Valid-16,LRUbits:??,Caching-1,Protection-??
-    //Do we want multiple size pages?
     //Make page table frames unswappable? 
     //Free frame list??
 */
 
 typedef struct{
-    uint32_t page_number;   //Irrelevent for frames with page tables; technically would have page_no of latest page accesed-Could be useful for LRU
+    uint32_t* page_table_entry;   //Irrelevent for frames with page tables; technically would have page_no of latest page accesed-Could be useful for LRU
     int pid;
     bool valid;
+    frame_table_entry* lru_next;
+    frame_table_entry* lru_prev;
 } frame_table_entry;
 
 #define is_valid_frame_no(frame_no) (frame_no<NUM_FRAMES)

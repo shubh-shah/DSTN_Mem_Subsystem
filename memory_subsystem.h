@@ -11,7 +11,6 @@
 // #include "cache/l1_cache.h"
 // #include "cache/l2_cache.h"
 #include "mm/main_memory.h"
-// #include "sec_memory/sec_memory.h"
 
 extern void init_memory_subsystem(memory_subsystem* mem);
 

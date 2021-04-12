@@ -8,7 +8,8 @@ extern void init_memory_subsystem(memory_subsystem* mem){
     // l2_cache l2cache;
     mem->main_mem = malloc(sizeof(main_memory));
     init_main_memory(mem->main_mem);
-    // sec_memory sec_mem;
+    mem->sec_mem_fd = fopen();
+    // init tasks
 }
 
 /*
@@ -35,7 +36,7 @@ restart:
     }
     uint32_t physical_address = (frame_no<<PT_SHIFT)+offset;
     //Return value would be success or failure
-    if(!load_store_l1cache(mem,physical_address)){
+    if(!load_store_l1cache(mem->l1_cache,physical_address)){
         return 0;
     }
     if(!load_store_l2cache(mem,physical_address)){
@@ -43,9 +44,11 @@ restart:
     }
     //Error checking not required as it is gauranteed the page is in memory at this point
     if(load){
+        //Load to l1&l2
         mem->reg=mem->main_mem->mem_arr[physical_address];
     }
     else{
+        //Load to l1&l2
         mem->main_mem->mem_arr[physical_address]=mem->reg;
     }
     return 0;
