@@ -6,8 +6,21 @@
 
 #include "../task.h"
 
-typedef struct{
+#define NUM_BITS_PAGE 23
+#define NUM_BITS_FRAME 16
+#define NUM_TLB_ENTRIES 20
+#define NUM_BITS_OFFSET 9
 
+typedef struct{
+    uint32_t page_no:NUM_BITS_PAGE;
+    uint8_t pid;
+    bool valid;
+    uint16_t frame_no:NUM_BITS_FRAME;
+    uint8_t share_count;
+}tlb_entry;
+
+typedef struct{
+    tlb_entry entries[20];
 }trans_look_buff;
 
 extern void   init_tlb(trans_look_buff* tlb);
