@@ -125,7 +125,7 @@ void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_e
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-    struct pass_pg_fault* args = malloc(sizeof(struct pass_pg_fault));
+    struct pass_pg_fault* args = malloc(sizeof(struct pass_pg_fault))   ;
     args->invalid_entry = invalid_entry;
     args->linear_address = linear_address;
     args->is_pgtbl = is_pgtbl;

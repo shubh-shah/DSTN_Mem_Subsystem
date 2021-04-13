@@ -6,7 +6,7 @@
 #include "cache/tlb.h"
 #include "cache/l1cache.h"
 #include "cache/l2cache.h"
-
+#include "tlb/tlb.h"
 typedef struct{
     trans_look_buff* tlb;
     l1cache l1_cache;
