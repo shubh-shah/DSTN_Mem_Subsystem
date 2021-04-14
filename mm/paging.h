@@ -3,55 +3,38 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#define MM_SIZE (32*1024*1024)          //32MB
-#define PG_SIZE 512                  //512B
+#include "../ADT/queue.h"
+#define MM_SIZE (32*1024*1024)                      //32MB
+#define PG_SIZE 512                                 //512B
 
-
-//Page Table Constants
+/* Page Table Constants */
 #define PG_TBL_ENTRY_SIZE 4
 #define ENTRY_PER_PG (PG_SIZE/PG_TBL_ENTRY_SIZE)    //512/4
-#define PGD_SHIFT 30    //Bits to shift to get offset in pgd
+#define PGD_SHIFT 30                                //Bits to shift to get offset in pgd
 #define PMD_SHIFT 23
 #define PLD_SHIFT 16
 #define PT_SHIFT 9
-#define PAGE_MASK 0xFFFF    //Mask to get frame no from pg table entry
+#define PAGE_MASK 0xFFFF                            //Mask to get frame no from pg table entry
 #define VALID_MASK 0x10000
-//Frame Table Constants
-#define FRAME_TBL_ENTRY_SIZE 4
-#define NUM_FRAMES (MM_SIZE/PG_SIZE)    //64K
+#define DIRTY_MASK 0x20000
+#define WORKING_SET_MASK 0xFFC0000
 
-/*
-pgd
-pmd
-pld
-pt
-*/
+/* Frame Table Constants */
+#define FRAME_TBL_ENTRY_SIZE 4
+#define NUM_FRAMES (MM_SIZE/PG_SIZE)                //64K
 
 /*
     Memory Structure:
-    Starting 10 Bytes for process details : PTBR, PTLR
-    Bits required for logical address: 32 (2,7,7,7,9)
+    Bits required for logical address: 32 (2-pgd,7-pmd,7-pld,7-pt,9-offset)
     Bits for offset: 9
     Bits to address a page:32-9=23
     Bits required for physical address: 25
 
-    Next 4*64KB for Frame Table:
-        FRAME TABLE Entry(4Bytes): Valid-1,PgNo-23,PID-8
-        Pages required: 4*64K/512 = 4*64*2=512
-    PAGE TABLE Entry(4Bytes): FrameNo:0-15,Valid-16,Global-17,Dirty-18,Caching-1,Protection-?? (12 bits left)
-    PAGE DIR Entry(4Bytes): FrameNo-0-15,Valid-16,LRUbits:??,Caching-1,Protection-??
-    //Make page table frames unswappable? 
-    //Free frame list??
+    PAGE TABLE Entry(4Bytes): FrameNo:0-15, Valid-16, Dirty-18, Working Set: 19-28 ,Global-17,Protection-?? (12 bits left)
+    PAGE DIR Entry(4Bytes): FrameNo-0-15,Valid-16,LRUbits:??,Protection-??
 */
 
-typedef struct{
-    uint32_t* page_table_entry;   //Irrelevent for frames with page tables; technically would have page_no of latest page accesed-Could be useful for LRU
-    int pid;
-    bool valid;
-    frame_table_entry* lru_next;
-    frame_table_entry* lru_prev;
-} frame_table_entry;
-
+/* Page Table */
 #define is_valid_frame_no(frame_no) (frame_no<NUM_FRAMES)
 #define is_valid_entry(pte) (pte&VALID_MASK)
 
@@ -67,5 +50,28 @@ typedef struct{
 
 #define pt_index(linear_address) ((linear_address >> PT_SHIFT) & (ENTRY_PER_PG-1))
 #define pt_entry(mem_begin, dir_entry, linear_address) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+pt_index(linear_address))
+
+#define reset_bit_pgtbl_entry(entry,mask) (entry)&(~((uint32_t)(mask)))
+
+/* Frame Table */
+typedef struct{
+    uint32_t* page_table_entry;
+    int pid;
+    bool valid;
+} frame_table_entry;
+
+typedef struct{
+    frame_table_entry table[NUM_FRAMES];
+    queue* lru;
+} frame_table;
+
+extern frame_table* init_frame_table();
+
+extern void lru_move_to_back(frame_table* frame_tbl, uint32_t* pt_ent);
+
+extern frame_table_entry* lru_remove_by_pgtbl_entry(frame_table* frame_tbl, uint32_t* pt_ent);
+
+/* Remove a frame belonging to given pid */
+extern frame_table_entry* lru_remove_by_pid(frame_table* frame_tbl, int pid);
 
 #endif

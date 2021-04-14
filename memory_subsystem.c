@@ -8,7 +8,7 @@ extern void init_memory_subsystem(memory_subsystem* mem){
     // l2_cache l2cache;
     mem->main_mem = malloc(sizeof(main_memory));
     init_main_memory(mem->main_mem);
-    mem->sec_mem_fd = fopen();
+    // mem->sec_mem_fd = fopen();
     // init tasks
 }
 
@@ -43,12 +43,14 @@ restart:
         return 0;
     }
     //Error checking not required as it is gauranteed the page is in memory at this point
+    //Add to working set
     if(load){
         //Load to l1&l2
         mem->reg=mem->main_mem->mem_arr[physical_address];
     }
     else{
         //Load to l1&l2
+        //Mark dirty
         mem->main_mem->mem_arr[physical_address]=mem->reg;
     }
     return 0;

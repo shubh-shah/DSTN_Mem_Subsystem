@@ -7,7 +7,7 @@
 #include "task.h"
 #include "mem_struct.h"
 
-#include "cache/tlb.h"
+#include "tlb/tlb.h"
 // #include "cache/l1_cache.h"
 // #include "cache/l2_cache.h"
 #include "mm/main_memory.h"
