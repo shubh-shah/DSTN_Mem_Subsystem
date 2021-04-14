@@ -23,7 +23,7 @@ typedef struct {
 
 typedef queue trans_look_buff;
 
-extern void init_tlb(trans_look_buff *tlb);
+extern trans_look_buff *init_tlb();
 
 //task struct bcuz need pid
 extern uint32_t get_frame_no_tlb(trans_look_buff *tlb, task_struct *task, uint32_t linear_address);
