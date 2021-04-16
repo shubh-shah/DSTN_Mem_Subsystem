@@ -9,7 +9,7 @@
 
 #include "tlb/tlb.h"
 // #include "cache/l1cache.h"
-// #include "cache/l2cache.h"
+// #include "cache/l2_cache.h"
 #include "mm/main_memory.h"
 
 extern memory_subsystem* init_memory_subsystem();

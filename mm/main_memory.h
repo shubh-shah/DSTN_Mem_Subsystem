@@ -22,7 +22,7 @@ typedef struct{
     uint8_t mem_arr[MM_SIZE];
     frame_table* frame_tbl;
     int nr_free_frames;
-    queue* disk_map; 
+    queue* disk_map;
     // frame_table_entry* free_frames_list;
 } main_memory;
 

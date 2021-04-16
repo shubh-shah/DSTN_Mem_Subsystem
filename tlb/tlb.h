@@ -12,6 +12,7 @@
 #define NUM_TLB_ENTRIES 20
 #define NUM_BITS_OFFSET 9
 
+#define PG_TBL_FRAME_SHIFT 16
 
 typedef struct {
     bool global;
@@ -25,7 +26,6 @@ typedef queue trans_look_buff;
 
 extern trans_look_buff *init_tlb();
 
-//task struct bcuz need pid
 extern uint32_t get_frame_no_tlb(trans_look_buff *tlb, task_struct *task, uint32_t linear_address);
 
 extern void tlb_invalidate(trans_look_buff *tlb, task_struct *task);
