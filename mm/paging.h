@@ -18,6 +18,7 @@
 #define VALID_MASK 0x10000
 #define DIRTY_MASK 0x20000
 #define WORKING_SET_MASK 0xFFC0000
+#define WORKING_SET_SHIFT 18
 
 /* Frame Table Constants */
 #define FRAME_TBL_ENTRY_SIZE 4
@@ -30,7 +31,7 @@
     Bits to address a page:32-9=23
     Bits required for physical address: 25
 
-    PAGE TABLE Entry(4Bytes): FrameNo:0-15, Valid-16, Dirty-18, Working Set: 19-28 ,Global-17,Protection-?? (12 bits left)
+    PAGE TABLE Entry(4Bytes): FrameNo:0-15, Valid-16, Dirty-17, Working Set: 18-27 ,Global-17,Protection-?? (12 bits left)
     PAGE DIR Entry(4Bytes): FrameNo-0-15,Valid-16,LRUbits:??,Protection-??
 */
 

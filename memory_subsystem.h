@@ -8,11 +8,12 @@
 #include "mem_struct.h"
 
 #include "tlb/tlb.h"
-// #include "cache/l1_cache.h"
-// #include "cache/l2_cache.h"
+// #include "cache/l1cache.h"
+// #include "cache/l2cache.h"
 #include "mm/main_memory.h"
 
-extern void init_memory_subsystem(memory_subsystem* mem);
+extern memory_subsystem* init_memory_subsystem();
+extern void init_task(int task_index, main_memory* mem);
 
 #define load_byte(mem, task, linear_address) load_store_byte(mem, task, linear_address, true)
 #define store_byte(mem, task, linear_address) load_store_byte(mem, task, linear_address, false)

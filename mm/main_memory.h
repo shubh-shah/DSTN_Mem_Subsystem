@@ -22,14 +22,14 @@ typedef struct{
     uint8_t mem_arr[MM_SIZE];
     frame_table* frame_tbl;
     int nr_free_frames;
-    queue* disk_map  
+    queue* disk_map; 
     // frame_table_entry* free_frames_list;
 } main_memory;
 
 
 /* In main_mem.c */
 extern main_memory* init_main_memory();
-extern int do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address);
+extern uint32_t do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address);
 extern void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl);
 extern uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl);
 extern void working_set_interrupt_handler(int sig);

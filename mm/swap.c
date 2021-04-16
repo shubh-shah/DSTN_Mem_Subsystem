@@ -6,6 +6,7 @@ disk_map_entry* init_disk_map_entry(int pid, uint32_t* page_table_entry, int loc
     new->pid = pid;
     new->page_table_entry = page_table_entry;
     new->location_in_sec_mem = loc;
+    return new;
 }
 
 bool swap_in(main_memory* main_mem, task_struct* task, uint32_t* page_table_entry){

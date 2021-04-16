@@ -10,7 +10,7 @@ frame_table* init_frame_table(){
 }
 
 extern void lru_move_to_back(frame_table* frame_tbl, uint32_t* pt_ent){
-    frame_table_entry* mru_entry = mru_remove_by_pgtbl_entry(frame_tbl,pt_ent);
+    frame_table_entry* mru_entry = lru_remove_by_pgtbl_entry(frame_tbl,pt_ent);
     push(frame_tbl->lru,mru_entry);
 }
 

@@ -30,7 +30,7 @@ extern main_memory* init_main_memory(){
         Invalid Refrence
         Page Fault
 */
-int do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address){
+uint32_t do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address){
     //RD WR PERMISSION CHECK?
     //PTLR??
     if(pgd_index(linear_address) >= task->ptlr)           
@@ -38,13 +38,13 @@ int do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct*
 
     uint32_t* pgd_ent = pgd_entry(task, linear_address);
     if(!is_valid_entry(*pgd_ent)){
-        do_page_fault(main_mem, task, pgd_ent, linear_address, 2);
+        do_page_fault(main_mem, task, pgd_ent, linear_address, 1);
         return PAGE_FAULT;
     }
 
     uint32_t* pmd_ent = pmd_entry(main_mem->mem_arr, *pgd_ent, linear_address);
     if(!is_valid_entry(*pmd_ent)){
-        do_page_fault(main_mem, task, pmd_ent, linear_address, 2);
+        do_page_fault(main_mem, task, pmd_ent, linear_address, 1);
         return PAGE_FAULT;
     }
 
@@ -99,13 +99,14 @@ void* _do_page_fault(void* args){
     }
     /* Update Page Table Entry */
     *entry |= VALID_MASK;
+    task->status = READY;
     return NULL;
 }
 void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl){
     if(is_valid_entry(*invalid_entry)){
         return;
     }
-    //Change status of task to waiting
+    task->status = WAITING;
     pthread_t tid_listen;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -128,7 +129,7 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
         else{
             lru_entry = lru_remove_by_pid(main_mem->frame_tbl, task->pid);
         }
-        if((*pgtbl_entry)&DIRTY_MASK){
+        if((*(lru_entry->page_table_entry))&DIRTY_MASK){
             swap_out(main_mem, lru_entry);
             *(lru_entry->page_table_entry) = reset_bit_pgtbl_entry((*(lru_entry->page_table_entry)),DIRTY_MASK);
         }
@@ -143,8 +144,9 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
             }
         }
     }
-    //Lock frame
+    //Lock frame -stop replacement
     //Unlock Frame
+    //Lock process -stop recurrent page faults
     /* Update Frame Table Entry */
     lru_entry->page_table_entry = pgtbl_entry;
     lru_entry->pid = task->pid;
@@ -165,9 +167,59 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
 }
 
 void working_set_interrupt_handler(int sig){
-    
+//Clear Working set bits after a while
+//LOcking required here as well
+    int count_per_process[no_of_tasks];
+    int total_count;
+    for(int i=0;i<no_of_tasks;i++){
+        if(tasks[i].status != SWAPPED_OUT){
+            for(uint32_t page_no=0;page_no<=UINT32_MAX/PG_SIZE;){
+                uint32_t linear_address = page_no*PG_SIZE;
+                if(pgd_index(linear_address) >= tasks[i].ptlr)      
+                    break;
+
+                uint32_t* pgd_ent = pgd_entry(&tasks[i], linear_address);
+                if(!is_valid_entry(*pgd_ent)){
+                    linear_address += ENTRY_PER_PG*ENTRY_PER_PG*ENTRY_PER_PG;
+                }
+
+                uint32_t* pmd_ent = pmd_entry(tasks[i].main_mem_base, *pgd_ent, linear_address);
+                if(!is_valid_entry(*pmd_ent)){
+                    linear_address += ENTRY_PER_PG*ENTRY_PER_PG;
+                }
+
+                uint32_t* pld_ent = pld_entry(tasks[i].main_mem_base, *pmd_ent, linear_address);
+                if(!is_valid_entry(*pld_ent)){
+                    page_no += ENTRY_PER_PG; 
+                    continue;
+                }
+                
+                uint32_t* pt_ent = pt_entry(tasks[i].main_mem_base, *pld_ent, linear_address);
+                page_no++;
+                if(!is_valid_entry(*pt_ent)){
+                    continue;
+                }
+                uint32_t working_set_bits = (((*pt_ent)&WORKING_SET_MASK)>>(WORKING_SET_SHIFT+1))<<WORKING_SET_SHIFT;
+                if(working_set_bits){
+                    count_per_process[i]++;
+                }
+                (*pt_ent) = reset_bit_pgtbl_entry((*pt_ent),WORKING_SET_MASK);
+                (*pt_ent) |= working_set_bits; 
+            }
+            total_count+=count_per_process[i];
+        }
+    }
+    if(total_count>NUM_FRAMES){ //Num FRames - 64K cuz of page tables?
+        printf("Thrashing Detected! Slow down\n");
+        // need frame blocking here too
+        // swap_and_suspend_a_process; - set task->status=SWAPPED_OUT?
+        // Block processes from entering until next working set window?
+    }
+    // else if(count<lower_lim){
+    //     // allow_processes;??
+    // }
 }
 
-//Clear Working set bits after a while
-// Working set strategy - Count page table accesses in locality?
 //Should we write pages to memory when free?
+//Keep a start searching pointer for get_zeroed_page?
+//Memory_subsystem.c
