@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "mm/main_memory.h"
 // #include "cache/l1cache.h"
-// #include "cache/l2cache.h"
+// #include "cache/l2_cache.h"
 #include "tlb/tlb.h"
 
 typedef struct{
