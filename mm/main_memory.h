@@ -9,10 +9,10 @@
 #include "../tlb/tlb.h"
 
 /* Thrashing Prevention */
-#define MAX_FRAMES_PER_TASK (24*1024)       //24K
+#define MAX_FRAMES_PER_TASK (24*1024)       /* 24K */
 #define MIN_FRAMES_PER_TASK 16
-#define WORKING_SET_WINDOW 10000  //10000 microseconds???
-#define TIMER_INTERVAL 1000 //1000 microiseconds
+#define WORKING_SET_WINDOW 10000            /* microseconds */
+#define TIMER_INTERVAL 1000                 /* microiseconds */
 #define WORKING_SET_BITS 10
 #define LOWER_LIMIT_THRASHING ((NUM_FRAMES*3)/4)
 #define UPPER_LIMIT_THRASHING NUM_FRAMES
@@ -41,10 +41,10 @@ extern void working_set_interrupt_handler(int sig);
 /* 
 In swap.c 
 Swap Behaviour:
-If a page not found in swap: marked as dirty on initialisation.
-Else marked clean.
-On any modifications, marked dirty.
-Marked clean after swap out.
+    If a page not found in swap: marked as dirty on initialisation.
+    Else marked clean.
+    On any modifications, marked dirty.
+    Marked clean after swap out.
 */
 #define DISK_MAP_SIZE (1024*1024) /* Essentially limits size of virtual space */
 typedef struct
