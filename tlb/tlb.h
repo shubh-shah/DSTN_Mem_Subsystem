@@ -6,13 +6,12 @@
 
 #include "../task.h"
 #include "../ADT/queue.h"
+#include "../mm/paging.h"
 
 #define NUM_BITS_PAGE 23
 #define NUM_BITS_FRAME 16
 #define NUM_TLB_ENTRIES 20
 #define NUM_BITS_OFFSET 9
-
-#define PG_TBL_FRAME_SHIFT 16
 
 typedef struct {
     bool global;

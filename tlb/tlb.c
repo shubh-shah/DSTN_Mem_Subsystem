@@ -51,7 +51,7 @@ void insert_tlb_entry(trans_look_buff *tlb, task_struct *task, uint32_t linear_a
     new_entry->pid = task->pid;
     new_entry->global = false;
     new_entry->page_no = linear_address >> NUM_BITS_OFFSET;
-    new_entry->frame_no = page_tbl_entry >> PG_TBL_FRAME_SHIFT;
+    new_entry->frame_no = page_tbl_entry & PAGE_MASK;
 
     push(tlb, new_entry);
 }

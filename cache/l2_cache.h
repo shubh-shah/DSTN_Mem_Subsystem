@@ -48,6 +48,6 @@ void custom_pop(queue *q, main_memory *mm);
 
 extern bool read_l2_cache(l2_cache *cache, uint32_t physical_address);
 
-extern void write_l2_cache(l2_cache *cache, uint32_t physical_address);
+extern bool write_l2_cache(l2_cache *cache, uint32_t physical_address);
 
 #endif
