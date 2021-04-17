@@ -132,12 +132,29 @@ void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_e
 }
 
 /* 
+If frame not global, deallocate corresponding frame and Invalidate the page
+*/
+void deallocate_frame(main_memory* main_mem, frame_table_entry* entry){
+    if(entry->pid!=-1){
+        /* Update Frame Table Entry */
+        entry->valid = 0;
+        /* Update Page Table Entry */
+        (*entry->page_table_entry) = reset_bit_pgtbl_entry(*(entry->page_table_entry),VALID_MASK);
+        /* Update LRU Queue */
+        lru_remove_by_pgtbl_entry(main_mem->frame_tbl, entry->page_table_entry);
+        /* Update Global Counters */
+        main_mem->nr_free_frames++;
+        find_task(entry->pid)->frames_used--;
+    }
+}
+
+/* 
     Allocate a frame to a process.
     If all frames occupied, LRU replacement.
 */
 uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl){
     frame_table_entry* lru_entry;
-    if(main_mem->nr_free_frames == 0){    
+    if(main_mem->nr_free_frames == 0){
         /* Replacement */ 
         if (task->frames_used < MAX_FRAMES_PER_TASK) {
             /* Global replacement */
@@ -148,10 +165,7 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
             lru_entry = lru_remove_by_pid(main_mem->frame_tbl, task->pid);
         }
         swap_out(main_mem, lru_entry);
-        /* Invalidate the page and frame table entries */
-        *(lru_entry->page_table_entry) = reset_bit_pgtbl_entry((*(lru_entry->page_table_entry)),VALID_MASK);
-        lru_entry->valid = 0;
-        main_mem->nr_free_frames++;
+        deallocate_frame(main_mem, lru_entry);
         printf("Replacing Frame %d",lru_entry-main_mem->frame_tbl->table);
     }else{
         /* Get a free frame */
@@ -302,3 +316,4 @@ void working_set_interrupt_handler(int sig){
     // char * time_str = ctime(&mytime);
     // time_str[strlen(time_str)-1] = '\0';
     // printf("Thrashing Routine Started: Time:%s\n",time_str);fflush(stdout);
+//Working set page walk

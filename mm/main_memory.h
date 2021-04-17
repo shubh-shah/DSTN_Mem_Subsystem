@@ -38,6 +38,7 @@ extern void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* in
 extern uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl);
 extern uint32_t get_global_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl);
 extern void working_set_interrupt_handler(int sig);
+extern void deallocate_frame(main_memory* main_mem, frame_table_entry* entry);
 /* 
 In swap.c 
 Swap Behaviour:

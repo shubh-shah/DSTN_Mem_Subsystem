@@ -14,7 +14,7 @@ int init_task(){
         task_struct* task = malloc(sizeof(task_struct));
         task->pid = gtasks->next_pid;
         task->frames_used = 0;
-        task->ptlr = 2;
+        task->ptlr = 4;
         task->status = READY;
         gtasks->next_pid++;
         uint32_t frame_no = get_zeroed_page(gm_subsys->main_mem,task,task->pgd,1);

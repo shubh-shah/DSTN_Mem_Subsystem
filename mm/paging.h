@@ -42,15 +42,19 @@
 
 /* For Page table walk */
 #define pgd_index(linear_address) ((linear_address >> PGD_SHIFT) & (ENTRY_PER_PG-1))
+#define pgd_entry_from_offset(task, offset) (((uint32_t*)(task)->pgd)+offset)
 #define pgd_entry(task, linear_address) (((uint32_t*)(task)->pgd)+pgd_index(linear_address))
 
 #define pmd_index(linear_address) ((linear_address >> PMD_SHIFT) & (ENTRY_PER_PG-1))
+#define pmd_entry_from_offset(mem_begin, dir_entry, offset) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+offset)
 #define pmd_entry(mem_begin, dir_entry, linear_address) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+pmd_index(linear_address))
 
 #define pld_index(linear_address) ((linear_address >> PLD_SHIFT) & (ENTRY_PER_PG-1))
+#define pld_entry_from_offset(mem_begin, dir_entry, offset) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+offset)
 #define pld_entry(mem_begin, dir_entry, linear_address) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+pld_index(linear_address))
 
 #define pt_index(linear_address) ((linear_address >> PT_SHIFT) & (ENTRY_PER_PG-1))
+#define pt_entry_from_offset(mem_begin, dir_entry, offset) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+offset)
 #define pt_entry(mem_begin, dir_entry, linear_address) (((uint32_t*)(mem_begin+((dir_entry&PAGE_MASK)<<PT_SHIFT)))+pt_index(linear_address))
 
 #define reset_bit_pgtbl_entry(entry,mask) (entry)&(~((uint32_t)(mask)))

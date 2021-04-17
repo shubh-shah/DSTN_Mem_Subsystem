@@ -74,38 +74,33 @@ void swap_out(main_memory* main_mem, frame_table_entry* frame_entry){
 void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
     if(suspend){
         /* Page walk and swap out pages */
-        for(uint32_t page_no=0;page_no<=UINT32_MAX/PG_SIZE;){
-            uint32_t linear_address = page_no*PG_SIZE;
-            if(pgd_index(linear_address) >= task->ptlr)      
-                break;
-
-            uint32_t* pgd_ent = pgd_entry(task, linear_address);
+        for(uint32_t pgd_offset=0;pgd_offset<task->ptlr;pgd_offset++){
+            uint32_t* pgd_ent = pgd_entry_from_offset(task, pgd_offset);
             if(!is_valid_entry(*pgd_ent)){
-                linear_address += ENTRY_PER_PG*ENTRY_PER_PG*ENTRY_PER_PG;
-            }
-
-            uint32_t* pmd_ent = pmd_entry(gm_subsys->main_mem->mem_arr, *pgd_ent, linear_address);
-            if(!is_valid_entry(*pmd_ent)){
-                linear_address += ENTRY_PER_PG*ENTRY_PER_PG;
-            }
-
-            uint32_t* pld_ent = pld_entry(gm_subsys->main_mem->mem_arr, *pmd_ent, linear_address);
-            if(!is_valid_entry(*pld_ent)){
-                page_no += ENTRY_PER_PG; 
                 continue;
             }
-            
-            uint32_t* pt_ent = pt_entry(gm_subsys->main_mem->mem_arr, *pld_ent, linear_address);
-            page_no++;
-            if(!is_valid_entry(*pt_ent)){
-                continue;
-            }
-            *pt_ent = reset_bit_pgtbl_entry(*pt_ent,VALID_MASK);
-            frame_table_entry* frame_entry = page_table_entry_to_frame_table_entry_ptr(main_mem->frame_tbl->table,*pt_ent);
-            swap_out(main_mem, frame_entry);
-            /* If frame not global, unallocate corresponding frames */
-            if(frame_entry->pid!=-1){
-                frame_entry->valid = 0;
+            for(uint32_t pmd_offset=0;pmd_offset<ENTRY_PER_PG;pmd_offset++){
+                uint32_t* pmd_ent = pmd_entry_from_offset(gm_subsys->main_mem->mem_arr, *pgd_ent, pmd_offset);
+                if(!is_valid_entry(*pmd_ent)){
+                    continue;
+                }
+                for(uint32_t pld_offset=0;pld_offset<ENTRY_PER_PG;pld_offset++){
+                    uint32_t* pld_ent = pld_entry_from_offset(gm_subsys->main_mem->mem_arr, *pmd_ent, pld_offset);
+                    if(!is_valid_entry(*pld_ent)){
+                        continue;
+                    }
+                    for(uint32_t pt_offset=0;pt_offset<ENTRY_PER_PG;pt_offset++){
+                        uint32_t* pt_ent = pt_entry_from_offset(gm_subsys->main_mem->mem_arr, *pld_ent, pt_offset);
+                        if(!is_valid_entry(*pt_ent)){
+                            continue;
+                        }
+                        *pt_ent = reset_bit_pgtbl_entry(*pt_ent,VALID_MASK);
+                        frame_table_entry* frame_entry = page_table_entry_to_frame_table_entry_ptr(main_mem->frame_tbl->table,*pt_ent);
+                        swap_out(main_mem, frame_entry);
+                        /* If frame not global(handled by the function), unallocate corresponding frames */
+                        deallocate_frame(main_mem->frame_tbl, frame_entry);
+                    }
+                }
             }
         }
     }
@@ -113,12 +108,10 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
         /* If finishing, unallocate every frame allocated, including page tables */
         for(int i=0;i<NUM_FRAMES;i++){
             if(main_mem->frame_tbl->table[i].pid==task->pid){
-                main_mem->frame_tbl->table[i].valid = 0;
+                deallocate_frame(main_mem->frame_tbl, main_mem->frame_tbl->table+i);
             }
         }
     }
-    /* Clear the LRU Queue of the frames from this process */
-    while(lru_remove_by_pid(main_mem->frame_tbl, task->pid)!=NULL);
     
     if(suspend){
         task->status = SWAPPED_OUT;
