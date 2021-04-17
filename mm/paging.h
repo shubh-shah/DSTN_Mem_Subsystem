@@ -18,6 +18,7 @@
 #define VALID_MASK 0x10000
 #define DIRTY_MASK 0x20000
 #define WORKING_SET_MASK 0xFFC0000
+#define GLOBAL_MASK 0x10000000
 #define WORKING_SET_SHIFT 18
 
 /* Frame Table Constants */
@@ -54,10 +55,12 @@
 
 #define reset_bit_pgtbl_entry(entry,mask) (entry)&(~((uint32_t)(mask)))
 
+#define page_table_entry_to_frame_table_entry_ptr(frame_table_begin, pt_entry) (frame_table_begin+((pt_entry)&PAGE_MASK))
+
 /* Frame Table */
 typedef struct{
     uint32_t* page_table_entry;
-    int pid;
+    int pid;    //PID=-1 means global frame
     bool valid;
 } frame_table_entry;
 

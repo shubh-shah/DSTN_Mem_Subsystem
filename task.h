@@ -2,6 +2,8 @@
 #define TASK_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include "ADT/queue.h"
 
 #define RUNNING 0
 #define SWAPPED_OUT 1 //- needed for working set
@@ -10,7 +12,6 @@
 #define WAITING 4
 
 typedef struct{
-    uint8_t* main_mem_base; //Temporary, for working set handling - make this global afterwards uint32_t pgd_frame_no;
     int pid;
     uint32_t* pgd;          /* Highest Page Dir */
     uint32_t ptlr;          // Required?
@@ -18,9 +19,17 @@ typedef struct{
     int frames_used;        //Make this zero
 } task_struct;
 
+typedef struct{
+    queue* list;
+    int next_pid;
+} task_list;
 
-//Global variables required
-extern task_struct tasks[1024];  //Array
-extern int no_of_tasks;     //Maintained by init_task
+extern task_list* init_task_list();
+
+extern int init_task();
+extern task_struct* find_task(int pid);
+extern bool run_task(int pid);
+extern bool preempt_task(int pid);
+extern bool destroy_task(int pid);
 
 #endif

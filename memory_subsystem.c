@@ -1,26 +1,13 @@
 #include "memory_subsystem.h"
 #include <malloc.h>
 
-extern memory_subsystem* init_memory_subsystem(){
+memory_subsystem* init_memory_subsystem(){
     memory_subsystem* mem = malloc(sizeof(memory_subsystem));
     mem->tlb = init_tlb();
-    // l1_cache l1cache;
-    // l2_cache l2cache;
+    mem->l1cache = init_l1_cache();
+    mem->l2cache = init_l2_cache();
     mem->main_mem = init_main_memory();
-    // init tasks
     return mem;
-}
-
-void init_task(int task_index, main_memory* main_mem){
-    tasks[task_index].main_mem_base = main_mem->mem_arr;
-    tasks[task_index].pid = no_of_tasks;
-    tasks[task_index].frames_used = 0;
-    tasks[task_index].ptlr = 2;
-    tasks[task_index].main_mem_base = main_mem->mem_arr;
-    tasks[task_index].status = READY;
-    no_of_tasks++;
-    uint32_t frame_no = get_zeroed_page(main_mem,tasks+task_index,tasks[task_index].pgd,1);
-    uint32_t* pgd = ((uint32_t*)(main_mem->mem_arr+(frame_no<<PT_SHIFT)));
 }
 
 /*
@@ -37,7 +24,7 @@ restart:
     offset = linear_address & ((uint32_t)0x1FF);
     frame_no = get_frame_no_tlb(mem->tlb,task,linear_address);
     /* TLB Miss Handling */
-    if(!is_valid_frame_no(frame_no)){         
+    if(!is_valid_frame_no(frame_no)){      
         int error;
         /* Page fault/Invalid Ref Handling */
         if(error = do_page_table_walk(mem->main_mem,mem->tlb,task,linear_address)){

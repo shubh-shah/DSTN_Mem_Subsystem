@@ -5,17 +5,10 @@
 
 #include "task.h"
 #include "memory_subsystem.h"
+#include "global_variables.h"
 
-task_struct tasks[1024];
-int no_of_tasks=0;
-
-int is_unfinished(){
-    for(int i=0;i<no_of_tasks;i++){
-        if(tasks[i].status!=FINISHED)
-            return 1;
-    }
-    return 0;
-}
+task_list* gtasks;
+memory_subsystem* gm_subsys;
 
 int main(){
     srand(92);
@@ -26,30 +19,39 @@ int main(){
     traces[3]=fopen("inputs/2019_20_IISEM_M88KSIM.txt","r");
     traces[4]=fopen("inputs/2019_20_IISEM_VORTEX.txt","r");
 
-    memory_subsystem* mem = init_memory_subsystem();
+    gm_subsys = init_memory_subsystem();
+    printf("Memory System Started!\n");
+    gtasks = init_task_list();
+    int pid[5];
     for(int i=0;i<5;i++){
-        init_task(i,mem->main_mem);
-        printf("%d %d\n",tasks[i].status,no_of_tasks);
+        while((pid[i]=init_task())!=-1){
+            //Means THrashing is on!
+            sleep(1);
+        } 
     }
+    printf("Tasks Initialised!\n");
     int curr_task=0;
     uint32_t logical_address;
-    while(is_unfinished()){
-        if(tasks[curr_task].status == READY){
+    while(!isEmpty(gtasks->list)){
+        if(run_task(pid[curr_task])){
             int allowed_refrences = (rand()%100+150);
-            if(fscanf(traces[curr_task],"%x",&logical_address)<=0){
-                tasks[curr_task].status = FINISHED;
-            }
-            tasks[curr_task].status = RUNNING;
-            while(allowed_refrences-- && tasks[curr_task].status==RUNNING){
-                if(0){ //code_segment
-                    if(load_byte(mem, tasks+curr_task, logical_address))
+            printf("Task %d started.\n",pid[curr_task]);
+            int error;
+            while(allowed_refrences-- && (find_task(pid[curr_task]))->status==RUNNING){
+                if(fscanf(traces[curr_task],"%x",&logical_address)<=0){
+                    destroy_task(pid[curr_task]);
+                    break;
+                }
+                if( (logical_address&0x7F000000) == 0x7F000000){ //code_segment
+                    if(error = load_byte(gm_subsys, (find_task(pid[curr_task])), logical_address))
                         break;    /* Page fault */               
                 }
                 else{
-                    if(load_store_byte(mem, tasks+curr_task, logical_address,rand()%2))   /* rand()%2 decides the op:load or store */
+                    if(error = load_store_byte(gm_subsys, (find_task(pid[curr_task])), logical_address,rand()%2))   /* rand()%2 decides the op:load or store */
                         break;    /* Page fault */  
                 }
             }
+            preempt_task(pid[curr_task]);
         }
         curr_task=(curr_task+1)%5;
     }

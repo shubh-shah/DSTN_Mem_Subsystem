@@ -9,14 +9,18 @@ extern main_memory* init_main_memory(){
     main_mem->nr_free_frames = NUM_FRAMES;
     main_mem->frame_tbl = init_frame_table();
     main_mem->disk_map = createQueue(DISK_MAP_SIZE);
+    main_mem->thrashing = 0;
 
     /* Set Timer for Working set */
     signal(SIGVTALRM,working_set_interrupt_handler);
     struct timeval interval;
+    struct timeval zero;
     struct itimerval period;
     interval.tv_sec=0;
     interval.tv_usec=TIMER_INTERVAL;
-    period.it_interval=interval;
+    zero.tv_sec=0;
+    zero.tv_usec=0;
+    period.it_interval=zero;
     period.it_value=interval;
     setitimer(ITIMER_VIRTUAL,&period,NULL);
     return main_mem;
@@ -77,7 +81,7 @@ struct pass_pg_fault{
     task_struct* task;
 };
 //Synchronistaion problems??? Lock a page table????
-void* _do_page_fault(void* args){ 
+void* _do_page_fault(void* args){
     uint32_t linear_address = ((struct pass_pg_fault*) args)->linear_address;
     uint32_t* entry = ((struct pass_pg_fault*) args)->invalid_entry;
     bool is_pgtbl = ((struct pass_pg_fault*) args)->is_pgtbl;
@@ -103,6 +107,7 @@ void* _do_page_fault(void* args){
     return NULL;
 }
 void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl){
+    printf("Page Fault for: %x",linear_address);
     if(is_valid_entry(*invalid_entry)){
         return;
     }
@@ -117,7 +122,8 @@ void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_e
     args->is_pgtbl = is_pgtbl;
     args->main_mem = main_mem;
     args->task = task;
-    pthread_create(&tid_listen,&attr,_do_page_fault,(void*)args);
+    // pthread_create(&tid_listen,&attr,_do_page_fault,(void*)args);
+    _do_page_fault((void*)args);
 }
 
 uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl){
@@ -129,13 +135,11 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
         else{
             lru_entry = lru_remove_by_pid(main_mem->frame_tbl, task->pid);
         }
-        if((*(lru_entry->page_table_entry))&DIRTY_MASK){
-            swap_out(main_mem, lru_entry);
-            *(lru_entry->page_table_entry) = reset_bit_pgtbl_entry((*(lru_entry->page_table_entry)),DIRTY_MASK);
-        }
+        swap_out(main_mem, lru_entry);
         *(lru_entry->page_table_entry) = reset_bit_pgtbl_entry((*(lru_entry->page_table_entry)),VALID_MASK);
         lru_entry->valid = 0;
         main_mem->nr_free_frames++;
+        printf("Replacing Frame %d",lru_entry-main_mem->frame_tbl->table);
     }else{
         for(int i=0;i<NUM_FRAMES;i++){
             if(!main_mem->frame_tbl->table[i].valid){
@@ -163,63 +167,106 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
     for(int i=0;i<PG_SIZE;i++){
         main_mem->mem_arr[(frame_no<<PT_SHIFT)+i] = 0;
     }
+    printf(" Frame Provided: %d\n",frame_no);
+    return frame_no;
+}
+
+//Not called anywhere
+uint32_t get_global_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl){
+    uint32_t frame_no = get_zeroed_page(main_mem, task, pgtbl_entry, is_pgtbl);
+    lru_remove_by_pgtbl_entry(main_mem->frame_tbl, pgtbl_entry);    /* Remove from lru queue to make it non replaceable */
+    main_mem->frame_tbl->table[frame_no].pid = -1;
+    *pgtbl_entry|=GLOBAL_MASK;
     return frame_no;
 }
 
 void working_set_interrupt_handler(int sig){
-//Clear Working set bits after a while
-//LOcking required here as well
+    //LOcking required here as well
+    // time_t mytime = time(NULL);
+    // char * time_str = ctime(&mytime);
+    // time_str[strlen(time_str)-1] = '\0';
+    // printf("Thrashing Routine Started: Time:%s\n",time_str);fflush(stdout);
+    int no_of_tasks = gtasks->list->node_count;
     int count_per_process[no_of_tasks];
-    int total_count;
-    for(int i=0;i<no_of_tasks;i++){
-        if(tasks[i].status != SWAPPED_OUT){
+    int total_count=0;
+    if (isEmpty(gtasks->list))
+        return;
+    q_node* curr = gtasks->list->front;
+    int i=0;
+    while(curr != NULL) {
+        task_struct* task = ((task_struct*)(curr->data_ptr));
+        count_per_process[i]=0;
+        if(task->status != SWAPPED_OUT){
             for(uint32_t page_no=0;page_no<=UINT32_MAX/PG_SIZE;){
                 uint32_t linear_address = page_no*PG_SIZE;
-                if(pgd_index(linear_address) >= tasks[i].ptlr)      
+                if(pgd_index(linear_address) >= task->ptlr)      
                     break;
 
-                uint32_t* pgd_ent = pgd_entry(&tasks[i], linear_address);
+                uint32_t* pgd_ent = pgd_entry(task, linear_address);
                 if(!is_valid_entry(*pgd_ent)){
                     linear_address += ENTRY_PER_PG*ENTRY_PER_PG*ENTRY_PER_PG;
                 }
 
-                uint32_t* pmd_ent = pmd_entry(tasks[i].main_mem_base, *pgd_ent, linear_address);
+                uint32_t* pmd_ent = pmd_entry(gm_subsys->main_mem->mem_arr, *pgd_ent, linear_address);
                 if(!is_valid_entry(*pmd_ent)){
                     linear_address += ENTRY_PER_PG*ENTRY_PER_PG;
                 }
 
-                uint32_t* pld_ent = pld_entry(tasks[i].main_mem_base, *pmd_ent, linear_address);
+                uint32_t* pld_ent = pld_entry(gm_subsys->main_mem->mem_arr, *pmd_ent, linear_address);
                 if(!is_valid_entry(*pld_ent)){
                     page_no += ENTRY_PER_PG; 
                     continue;
                 }
                 
-                uint32_t* pt_ent = pt_entry(tasks[i].main_mem_base, *pld_ent, linear_address);
+                uint32_t* pt_ent = pt_entry(gm_subsys->main_mem->mem_arr, *pld_ent, linear_address);
                 page_no++;
                 if(!is_valid_entry(*pt_ent)){
                     continue;
                 }
-                uint32_t working_set_bits = (((*pt_ent)&WORKING_SET_MASK)>>(WORKING_SET_SHIFT+1))<<WORKING_SET_SHIFT;
+                uint32_t working_set_bits = (*pt_ent)&WORKING_SET_MASK;
                 if(working_set_bits){
                     count_per_process[i]++;
                 }
+                working_set_bits = (working_set_bits>>(WORKING_SET_SHIFT+1))<<WORKING_SET_SHIFT;
                 (*pt_ent) = reset_bit_pgtbl_entry((*pt_ent),WORKING_SET_MASK);
                 (*pt_ent) |= working_set_bits; 
             }
             total_count+=count_per_process[i];
         }
+        i++;
+        curr = curr->next;
     }
-    if(total_count>NUM_FRAMES){ //Num FRames - 64K cuz of page tables?
-        printf("Thrashing Detected! Slow down\n");
-        // need frame blocking here too
-        // swap_and_suspend_a_process; - set task->status=SWAPPED_OUT?
-        // Block processes from entering until next working set window?
+    if(total_count>=UPPER_LIMIT_THRASHING){
+        printf("Thrashing Detected %d! Slow down\n",total_count);
+        gm_subsys->main_mem->thrashing = 1; //Block new processes
+        
+        q_node* swap_node = gtasks->list->front;
+        //while == Nullswap_node = gtasks->list->front;??
+        while(swap_node != NULL) {
+            if(((task_struct*)(swap_node->data_ptr))->status == READY){
+                break;
+            }
+            swap_node = swap_node->next;
+        }
+        unload_task(gm_subsys->main_mem, swap_node->data_ptr, 1);
+        // need frame blocking here too if pthread
     }
-    // else if(count<lower_lim){
-    //     // allow_processes;??
-    // }
+    else if(total_count<LOWER_LIMIT_THRASHING){
+        gm_subsys->main_mem->thrashing = 0;
+    }
+    /* Reset Timer for Working set */
+    signal(SIGVTALRM,working_set_interrupt_handler);
+    struct timeval interval;
+    struct timeval zero;
+    struct itimerval period;
+    interval.tv_sec=0;
+    interval.tv_usec=TIMER_INTERVAL;
+    zero.tv_sec=0;
+    zero.tv_usec=0;
+    period.it_interval=zero;
+    period.it_value=interval;
+    setitimer(ITIMER_VIRTUAL,&period,NULL);
 }
 
 //Should we write pages to memory when free?
 //Keep a start searching pointer for get_zeroed_page?
-//Memory_subsystem.c

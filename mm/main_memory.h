@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "../global_variables.h"
 #include "paging.h"
 #include "../task.h"
 #include "../tlb/tlb.h"
@@ -13,6 +14,8 @@
 #define WORKING_SET_WINDOW 10000  //10000 microseconds???
 #define TIMER_INTERVAL 1000 //1000 microiseconds
 #define WORKING_SET_BITS 10
+#define LOWER_LIMIT_THRASHING ((NUM_FRAMES*3)/4)
+#define UPPER_LIMIT_THRASHING NUM_FRAMES
 
 /* ERROR CODES: */
 #define INVALID_REF 1
@@ -22,7 +25,8 @@ typedef struct{
     uint8_t mem_arr[MM_SIZE];
     frame_table* frame_tbl;
     int nr_free_frames;
-    queue* disk_map;
+    queue* disk_map; 
+    bool thrashing;
     // frame_table_entry* free_frames_list;
 } main_memory;
 
@@ -32,6 +36,7 @@ extern main_memory* init_main_memory();
 extern uint32_t do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address);
 extern void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl);
 extern uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl);
+extern uint32_t get_global_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl);
 extern void working_set_interrupt_handler(int sig);
 /* 
 In swap.c 
@@ -51,5 +56,6 @@ typedef struct
 
 extern bool swap_in(main_memory* main_mem, task_struct* task, uint32_t* page_table_entry);
 extern void swap_out(main_memory* main_mem, frame_table_entry* frame);
+extern void unload_task(main_memory* main_mem, task_struct* task, bool suspend);
 
 #endif
