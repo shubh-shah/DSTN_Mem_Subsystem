@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "task.h"
 #include "memory_subsystem.h"
@@ -25,7 +26,7 @@ int main(){
     int pid[5];
     for(int i=0;i<5;i++){
         while((pid[i]=init_task())!=-1){
-            //Means THrashing is on!
+            /* Means thrashing */
             sleep(1);
         } 
     }
@@ -42,12 +43,14 @@ int main(){
                     destroy_task(pid[curr_task]);
                     break;
                 }
-                if( (logical_address&0x7F000000) == 0x7F000000){ //code_segment
+                if( (logical_address&0x7F000000) == 0x7F000000){
+                    /* code_segment - only load*/
                     if(error = load_byte(gm_subsys, (find_task(pid[curr_task])), logical_address))
                         break;    /* Page fault */               
                 }
                 else{
-                    if(error = load_store_byte(gm_subsys, (find_task(pid[curr_task])), logical_address,rand()%2))   /* rand()%2 decides the op:load or store */
+                    /* rand()%2 decides the op:load or store */
+                    if(error = load_store_byte(gm_subsys, (find_task(pid[curr_task])), logical_address,rand()%2))   
                         break;    /* Page fault */  
                 }
             }

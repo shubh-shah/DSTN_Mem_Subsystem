@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../global_variables.h"
 #include "paging.h"
 #include "../task.h"
 #include "../tlb/tlb.h"
@@ -27,11 +26,13 @@ typedef struct{
     int nr_free_frames;
     queue* disk_map; 
     bool thrashing;
-    // frame_table_entry* free_frames_list;
 } main_memory;
 
 
-/* In main_mem.c */
+/* 
+In main_mem.c 
+Refer to paging.h for details on memory structure.
+*/
 extern main_memory* init_main_memory();
 extern uint32_t do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address);
 extern void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl);
@@ -39,7 +40,11 @@ extern uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32
 extern uint32_t get_global_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl);
 extern void working_set_interrupt_handler(int sig);
 extern void deallocate_frame(main_memory* main_mem, frame_table_entry* entry);
-/* 
+
+/* For transfers to and from caches */
+extern void read_main_memory(main_memory* main_mem, uint32_t physical_address);
+extern void write_main_memory(main_memory* main_mem, trans_look_buff* tlb, uint32_t physical_address);
+/*
 In swap.c 
 Swap Behaviour:
     If a page not found in swap: marked as dirty on initialisation.
@@ -56,7 +61,7 @@ typedef struct
 } disk_map_entry;
 
 extern bool swap_in(main_memory* main_mem, task_struct* task, uint32_t* page_table_entry);
-extern void swap_out(main_memory* main_mem, frame_table_entry* frame);
+extern void swap_out(main_memory* main_mem, task_struct* task, uint32_t* page_table_entry);
 extern void unload_task(main_memory* main_mem, task_struct* task, bool suspend);
 
 #endif

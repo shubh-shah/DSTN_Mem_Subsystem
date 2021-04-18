@@ -4,26 +4,28 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../ADT/queue.h"
-#define MM_SIZE (32*1024*1024)                      //32MB
-#define PG_SIZE 512                                 //512B
+#define MM_SIZE (32*1024*1024)                      /* 32MB */
+#define PG_SIZE 512                                 /* 512B */
 
 /* Page Table Constants */
 #define PG_TBL_ENTRY_SIZE 4
-#define ENTRY_PER_PG (PG_SIZE/PG_TBL_ENTRY_SIZE)    //512/4
-#define PGD_SHIFT 30                                //Bits to shift to get offset in pgd
+#define ENTRY_PER_PG (PG_SIZE/PG_TBL_ENTRY_SIZE)    /* 512/4 */
+#define PGD_SHIFT 30                                /* Bits to shift to get offset in pgd */
 #define PMD_SHIFT 23
 #define PLD_SHIFT 16
 #define PT_SHIFT 9
-#define PAGE_MASK 0xFFFF                            //Mask to get frame no from pg table entry
+/* Masks to get different bits */
+#define PAGE_MASK 0xFFFF                            /* Mask to get frame no from pg table entry */
 #define VALID_MASK 0x10000
 #define DIRTY_MASK 0x20000
 #define WORKING_SET_MASK 0xFFC0000
+#define WORKING_SET_BIT 0x8000000
 #define GLOBAL_MASK 0x10000000
 #define WORKING_SET_SHIFT 18
 
 /* Frame Table Constants */
 #define FRAME_TBL_ENTRY_SIZE 4
-#define NUM_FRAMES (MM_SIZE/PG_SIZE)                //64K
+#define NUM_FRAMES (MM_SIZE/PG_SIZE)                /* 64K */
 
 /*
     Memory Structure:
@@ -34,6 +36,9 @@
 
     PAGE TABLE Entry(4Bytes) Bits: FrameNo:0-15, Valid-16, Dirty-17, Working Set: 18-27 ,Global-28
     PAGE DIR Entry(4Bytes) Bits: FrameNo-0-15, Valid-16
+
+    Heirarchy is:
+    Page global directory(pgd)->Page Middle directory(pmd)->Page Lower directory(pld)->Page Table(pt)->offset
 */
 
 /* Page Table */
@@ -60,7 +65,6 @@
 #define reset_bit_pgtbl_entry(entry,mask) (entry)&(~((uint32_t)(mask)))
 
 #define page_table_entry_to_frame_table_entry_ptr(frame_table_begin, pt_entry) (frame_table_begin+((pt_entry)&PAGE_MASK))
-//If doesn't work, change to: entry = *((uint32_t*)(main_mem->mem_arr+ptbr+PG_TBL_ENTRY_SIZE*pg_dir_offset));-Incorrect as frame no only, not address of frame
 
 /* Frame Table */
 typedef struct{
@@ -76,9 +80,9 @@ typedef struct{
 
 extern frame_table* init_frame_table();
 
-extern void lru_move_to_back(frame_table* frame_tbl, uint32_t* pt_ent);
+extern void lru_move_to_back(frame_table* frame_tbl, frame_table_entry* frtbl_ent);
 
-extern frame_table_entry* lru_remove_by_pgtbl_entry(frame_table* frame_tbl, uint32_t* pt_ent);
+extern frame_table_entry* lru_remove_by_frame_tbl_entry(frame_table* frame_tbl, frame_table_entry* frtbl_ent);
 
 extern frame_table_entry* lru_remove_by_pid(frame_table* frame_tbl, int pid);
 

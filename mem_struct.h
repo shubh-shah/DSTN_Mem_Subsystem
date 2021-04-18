@@ -12,7 +12,7 @@ typedef struct{
     l1_cache* l1cache;
     l2_cache* l2cache;
     main_memory* main_mem;
-    uint32_t reg;//make this byte sized?
+    uint32_t reg;
 } memory_subsystem;
 
 #endif

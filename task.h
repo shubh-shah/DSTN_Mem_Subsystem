@@ -15,9 +15,9 @@
 typedef struct{
     int pid;
     uint32_t* pgd;          /* Highest Page Dir */
-    uint32_t ptlr;          // Required?
-    int status;             
-    int frames_used;        //Make this zero
+    uint32_t ptlr;
+    int status;
+    int frames_used;
 } task_struct;
 
 typedef struct{

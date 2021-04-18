@@ -24,10 +24,10 @@ restart:
     offset = linear_address & ((uint32_t)0x1FF);
     frame_no = get_frame_no_tlb(mem->tlb,task,linear_address);
     /* TLB Miss Handling */
-    if(!is_valid_frame_no(frame_no)){      
+    if(!is_valid_frame_no(frame_no)){
         int error;
         /* Page fault/Invalid Ref Handling */
-        if(error = do_page_table_walk(mem->main_mem,mem->tlb,task,linear_address)){
+        if((error = do_page_table_walk(mem->main_mem,mem->tlb,task,linear_address))){
             /* The error code is forwarded */
             mem->reg = error;    
             return 1;
@@ -36,25 +36,33 @@ restart:
         goto restart;
     }
     uint32_t physical_address = (frame_no<<PT_SHIFT)+offset;
-    //Return value would be success or failure
-    // if(!load_store_l1cache(mem->l1_cache,physical_address)){
-        // return 0;
-    // }
-    // if(!load_store_l2cache(mem->l2_cache,physical_address)){
-        // return 0;
-    // }
-    /* Error checking not required as it is gauranteed the page is in memory at this point */
-    // In replacement for tlb set working bit in mm
-    // set_working_set_bit_tlb(frame_no);
     if(load){
-        //Load to l1&l2
-        mem->reg=mem->main_mem->mem_arr[physical_address];
+        if(!read_l1_cache(mem->l1cache,physical_address)){
+            /* Look Through for l1*/
+            bool l2_miss = !read_l2_cache(mem->l2cache,physical_address);
+            /* Look aside for l2 */
+            read_main_memory(mem->main_mem,physical_address);
+            if(l2_miss){
+                update_l2_cache(mem->l2cache,mem->main_mem,physical_address);
+            }
+            update_l1_cache(mem->l1cache,physical_address);
+        }
     }
     else{
-        //Load to l1&l2
-        // In replacement for tlb set dirty bit in mm
-        // set_dirty_bit_tlb(frame_no);
-        mem->main_mem->mem_arr[physical_address]=mem->reg;
+        if(!write_l1_cache(mem->l1cache, physical_address)){
+            /* Write allocate mechanism for write misses - Write miss same as read miss - get data to l1 */
+            bool l2_miss = !read_l2_cache(mem->l2cache,physical_address);
+            /* Look aside for l2 */
+            read_main_memory(mem->main_mem,physical_address);
+            if(l2_miss){
+                update_l2_cache(mem->l2cache,mem->main_mem,physical_address);
+            }
+            update_l1_cache(mem->l1cache,physical_address);
+            /* Write will succeed now */
+            write_l1_cache(mem->l1cache, physical_address);
+        }
+        /* Write through for l1 cache - no checking because we know the data is already in l2 cache */
+        write_l2_cache(mem->l2cache,physical_address);
     }
     return 0;
 }

@@ -11,15 +11,31 @@ task_list* init_task_list(){
 
 int init_task(){
     if(!(gm_subsys->main_mem->thrashing)){
+        /* Initialize a new task */
         task_struct* task = malloc(sizeof(task_struct));
         task->pid = gtasks->next_pid;
         task->frames_used = 0;
         task->ptlr = 4;
         task->status = READY;
         gtasks->next_pid++;
+        /* Allocate frame for pgd */
         uint32_t frame_no = get_zeroed_page(gm_subsys->main_mem,task,task->pgd,1);
         task->pgd = ((uint32_t*)(gm_subsys->main_mem->mem_arr+(frame_no<<PT_SHIFT))); 
         push(gtasks->list, task);
+        /* Pre page first 2 blocks of memory - Page no 0,1 - Can do by calling page fault for linear address = 0,512 */
+        uint32_t linear_address[2] = {0,512};
+        uint32_t* pgd_ent = pgd_entry(task, linear_address[0]);
+        do_page_fault(gm_subsys->main_mem, task, pgd_ent, linear_address[0], 1);
+
+        uint32_t* pmd_ent = pmd_entry(gm_subsys->main_mem->mem_arr, *pgd_ent, linear_address[0]);
+        do_page_fault(gm_subsys->main_mem, task, pmd_ent, linear_address[0], 1);
+
+        uint32_t* pld_ent = pld_entry(gm_subsys->main_mem->mem_arr, *pmd_ent, linear_address[0]);
+        do_page_fault(gm_subsys->main_mem, task, pld_ent, linear_address[0], 1);
+        for(int i=0;i<2;i++){
+            uint32_t* pt_ent = pt_entry(gm_subsys->main_mem->mem_arr, *pld_ent, linear_address[i]);
+            do_page_fault(gm_subsys->main_mem, task, pt_ent, linear_address[i], 0);
+        }
         return task->pid;
     }
     else{
@@ -36,7 +52,7 @@ task_struct* find_task(int pid){
             return NULL;
         curr = curr->next;
     }
-    return curr;
+    return (task_struct*)curr->data_ptr;
 }
 
 bool run_task(int pid){
@@ -88,7 +104,7 @@ bool destroy_task(int pid){
         gtasks->list->rear = prev;
     }
     gtasks->list->node_count--;
-    unload_task(gm_subsys->main_mem,curr,0);    //Imported from main_memory.h
+    unload_task(gm_subsys->main_mem,(task_struct*)curr->data_ptr,0);    /* Imported from main_memory.h */
     free(curr->data_ptr);
     free(curr);
     return 1;

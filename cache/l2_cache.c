@@ -1,5 +1,5 @@
 #include "l2_cache.h"
-
+#include "../global_variables.h"
 
 l2_cache *init_l2_cache() {
     l2_cache *cache = (l2_cache *) malloc(sizeof(l2_cache));
@@ -113,6 +113,6 @@ void custom_pop(queue *q, main_memory *mm) {
     if (block->dirty) {
         uint32_t physical_address = (((block->tag << L2_INDEX_BITS) + block->index) << L2_OFFSET_BITS) + block->offset;
         // write the block data to the l2-memory bus
-//        write_main_memory(mm, physical_address);
+       write_main_memory(mm, gm_subsys->tlb, physical_address);
     }
 }

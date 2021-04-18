@@ -19,6 +19,7 @@ typedef struct {
     uint8_t pid;
     uint32_t page_no: NUM_BITS_PAGE;
     uint32_t frame_no: NUM_BITS_FRAME;
+    uint32_t page_table_entry;
 } tlb_entry;
 
 typedef queue trans_look_buff;
@@ -30,5 +31,9 @@ extern uint32_t get_frame_no_tlb(trans_look_buff *tlb, task_struct *task, uint32
 extern void tlb_invalidate(trans_look_buff *tlb, task_struct *task);
 
 extern void insert_tlb_entry(trans_look_buff *tlb, task_struct *task, uint32_t linear_address, uint32_t page_tbl_entry);
+
+extern void set_dirty_bit_tlb(trans_look_buff *tlb, uint32_t frame_no);
+
+extern void tlb_push(trans_look_buff *tlb, tlb_entry* entry);
 
 #endif

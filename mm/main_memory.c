@@ -3,8 +3,9 @@
 #include <malloc.h>
 #include <sys/time.h>
 #include <signal.h>
+#include "../global_variables.h"
 
-extern main_memory* init_main_memory(){
+main_memory* init_main_memory(){
     main_memory* main_mem = malloc(sizeof(main_memory));
     main_mem->nr_free_frames = NUM_FRAMES;
     main_mem->frame_tbl = init_frame_table();
@@ -62,8 +63,6 @@ uint32_t do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_st
         do_page_fault(main_mem, task, pt_ent, linear_address, 0);
         return PAGE_FAULT;
     }
-    /* Move entry to back of LRU Queue (Make MRU frame) */
-    lru_move_to_back(main_mem->frame_tbl,pt_ent);
     insert_tlb_entry(tlb, task, linear_address, *pt_ent);
     return 0;
 }
@@ -81,7 +80,6 @@ struct pass_pg_fault{
 /* Seprate functions not really required, needed if using separate thread */
 void* _do_page_fault(void* args){
     /* Get Arguments */
-    uint32_t linear_address = ((struct pass_pg_fault*) args)->linear_address;
     uint32_t* entry = ((struct pass_pg_fault*) args)->invalid_entry;
     bool is_pgtbl = ((struct pass_pg_fault*) args)->is_pgtbl;
     main_memory* main_mem = ((struct pass_pg_fault*) args)->main_mem;
@@ -117,10 +115,10 @@ void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_e
     }
     task->status = WAITING;
     /* Set arguments */
-    pthread_t tid_listen;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    // pthread_t tid_listen;
+    // pthread_attr_t attr;
+    // pthread_attr_init(&attr);
+    // pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
     struct pass_pg_fault* args = malloc(sizeof(struct pass_pg_fault));
     args->invalid_entry = invalid_entry;
     args->linear_address = linear_address;
@@ -141,7 +139,7 @@ void deallocate_frame(main_memory* main_mem, frame_table_entry* entry){
         /* Update Page Table Entry */
         (*entry->page_table_entry) = reset_bit_pgtbl_entry(*(entry->page_table_entry),VALID_MASK);
         /* Update LRU Queue */
-        lru_remove_by_pgtbl_entry(main_mem->frame_tbl, entry->page_table_entry);
+        lru_remove_by_frame_tbl_entry(main_mem->frame_tbl, entry);
         /* Update Global Counters */
         main_mem->nr_free_frames++;
         find_task(entry->pid)->frames_used--;
@@ -164,9 +162,8 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
             /* If no. of frames allowed exceeded, local replacement */
             lru_entry = lru_remove_by_pid(main_mem->frame_tbl, task->pid);
         }
-        swap_out(main_mem, lru_entry);
+        swap_out(main_mem, task, lru_entry->page_table_entry);
         deallocate_frame(main_mem, lru_entry);
-        printf("Replacing Frame %d",lru_entry-main_mem->frame_tbl->table);
     }else{
         /* Get a free frame */
         for(int i=0;i<NUM_FRAMES;i++){
@@ -199,10 +196,31 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
 //Not called anywhere
 uint32_t get_global_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl){
     uint32_t frame_no = get_zeroed_page(main_mem, task, pgtbl_entry, is_pgtbl);
-    lru_remove_by_pgtbl_entry(main_mem->frame_tbl, pgtbl_entry);    /* Remove from lru queue to make it non replaceable */
+    lru_remove_by_frame_tbl_entry(main_mem->frame_tbl, main_mem->frame_tbl->table+frame_no);    /* Remove from lru queue to make it non replaceable */
     main_mem->frame_tbl->table[frame_no].pid = -1;
     *pgtbl_entry|=GLOBAL_MASK;
     return frame_no;
+}
+
+/* 
+Read a block from main memory:
+Error checking not required as it is gauranteed the page is in memory at this point 
+*/
+void read_main_memory(main_memory* main_mem, uint32_t physical_address){
+    /* Move entry to back of LRU Queue (Make MRU frame) */
+    lru_move_to_back(main_mem->frame_tbl,main_mem->frame_tbl->table+(physical_address>>PT_SHIFT));
+    /* Working set bit set automatically in tlb for each get */
+}
+/* 
+Write a block to main memory:
+Error checking not required as it is gauranteed the page is in memory at this point 
+*/
+void write_main_memory(main_memory* main_mem, trans_look_buff* tlb, uint32_t physical_address){
+    /* Move entry to back of LRU Queue (Make MRU frame) */
+    lru_move_to_back(main_mem->frame_tbl,main_mem->frame_tbl->table+(physical_address>>PT_SHIFT));
+    /* Working set bit set automatically in tlb for each get */
+    /* Bit set in TLB, after replacement, this is written to main memory */
+    set_dirty_bit_tlb(tlb, physical_address>>PT_SHIFT);
 }
 
 /*
@@ -274,15 +292,16 @@ void working_set_interrupt_handler(int sig){
         
         /* Search for a victim process */
         q_node* swap_node = gtasks->list->front;
-        //while == Nullswap_node = gtasks->list->front;??
         while(swap_node != NULL) {
-            if(((task_struct*)(swap_node->data_ptr))->status == READY){
+            if(((task_struct*)(swap_node->data_ptr))->status == READY || ((task_struct*)(swap_node->data_ptr))->status == WAITING){//Need to send signal if thread
                 break;
             }
             swap_node = swap_node->next;
         }
         /* suspend the task */
-        unload_task(gm_subsys->main_mem, swap_node->data_ptr, 1);
+        if(swap_node!=NULL){
+            unload_task(gm_subsys->main_mem, swap_node->data_ptr, 1);
+        }
         // need frame blocking here too if pthread
     }
     else if(total_count<LOWER_LIMIT_THRASHING){
@@ -303,17 +322,7 @@ void working_set_interrupt_handler(int sig){
     setitimer(ITIMER_VIRTUAL,&period,NULL);
 }
 
-//PTLR??
-//Should we write pages to memory when free?
 //Keep a start searching pointer for get_zeroed_page?
-//get zeroed
-    //Lock frame -stop replacement
-    //Unlock Frame
-    //Lock process -stop recurrent page faults
-//working set
-    // Locking required here as well
-    // time_t mytime = time(NULL);
-    // char * time_str = ctime(&mytime);
-    // time_str[strlen(time_str)-1] = '\0';
-    // printf("Thrashing Routine Started: Time:%s\n",time_str);fflush(stdout);
+// frame_table_entry* free_frames_list;
 //Working set page walk
+// Recursive make

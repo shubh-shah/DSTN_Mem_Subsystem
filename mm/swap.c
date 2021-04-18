@@ -1,6 +1,6 @@
 #include "main_memory.h"
+#include "../global_variables.h"
 
-//Initial state of disk map?
 disk_map_entry* init_disk_map_entry(int pid, uint32_t* page_table_entry, int loc){
     disk_map_entry* new = malloc(sizeof(disk_map_entry));
     new->pid = pid;
@@ -23,7 +23,17 @@ bool swap_in(main_memory* main_mem, task_struct* task, uint32_t* page_table_entr
             return 1;     /* Page not in disk, Means dirty */
         prev = curr;
         curr = curr->next;
+    } 
+    if(curr == main_mem->disk_map->front){
+        main_mem->disk_map->front = main_mem->disk_map->front->next;
     }
+    else{
+        prev->next = curr->next;
+    }
+    if(curr==main_mem->disk_map->rear){
+        main_mem->disk_map->rear = prev;
+    }
+    main_mem->disk_map->node_count--;
     uint64_t sec_base_address = ((disk_map_entry*)(curr->data_ptr))->location_in_sec_mem;
     /* Can Iterate and get the data from secondary memory using this address */
     return 0;
@@ -34,34 +44,15 @@ bool swap_in(main_memory* main_mem, task_struct* task, uint32_t* page_table_entr
     Global and clean pages are not swapped out
     Resets the DIRTY bit
 */
-void swap_out(main_memory* main_mem, frame_table_entry* frame_entry){
-    if((*(frame_entry->page_table_entry))&GLOBAL_MASK){   /* If Global, Don't swap out */
+void swap_out(main_memory* main_mem, task_struct* task, uint32_t* page_table_entry){
+    if((*(page_table_entry))&GLOBAL_MASK){   /* If Global, Don't swap out */
         return;
     }
-    if((*(frame_entry->page_table_entry))&DIRTY_MASK){    /* If Dirty, only then swap out */
-        if (isEmpty(main_mem->disk_map)){
-            /* Get free block from seconday memory and place it's address here*/
-            /* Move the frame to this block */
-            uint64_t sec_free_blk_base_address;
-            push(main_mem->disk_map,init_disk_map_entry(frame_entry->pid, frame_entry->page_table_entry, sec_free_blk_base_address));
-            return;
-        }
-        q_node* curr = main_mem->disk_map->front;
-        q_node* prev = NULL;
-        while( (((disk_map_entry*)(curr->data_ptr))->page_table_entry != frame_entry->page_table_entry) && (((disk_map_entry*)(curr->data_ptr))->pid != frame_entry->pid) ) {
-            if(curr->next == NULL){
-                /* Get free block from seconday memory and place it's address here*/
-                /* Move the frame to this block */
-                uint64_t sec_free_blk_base_address;
-                push(main_mem->disk_map,init_disk_map_entry(frame_entry->pid, frame_entry->page_table_entry, sec_free_blk_base_address));
-                return;
-            }
-            prev = curr;
-            curr = curr->next;
-        }
-        uint64_t sec_base_address = ((disk_map_entry*)(curr->data_ptr))->location_in_sec_mem;
+    if((*(page_table_entry))&DIRTY_MASK){    /* If Dirty, only then swap out */
+        uint64_t sec_free_blk_base_address; /*Get a free block in secondary memory */
+        push(main_mem->disk_map,init_disk_map_entry(task->pid, page_table_entry, sec_free_blk_base_address));
         /* Move the frame to this block */
-        *(frame_entry->page_table_entry) = reset_bit_pgtbl_entry((*(frame_entry->page_table_entry)),DIRTY_MASK);
+        *(page_table_entry) = reset_bit_pgtbl_entry((*(page_table_entry)),DIRTY_MASK);
     }
 }
 
@@ -96,9 +87,9 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
                         }
                         *pt_ent = reset_bit_pgtbl_entry(*pt_ent,VALID_MASK);
                         frame_table_entry* frame_entry = page_table_entry_to_frame_table_entry_ptr(main_mem->frame_tbl->table,*pt_ent);
-                        swap_out(main_mem, frame_entry);
+                        swap_out(main_mem, task, frame_entry->page_table_entry);
                         /* If frame not global(handled by the function), unallocate corresponding frames */
-                        deallocate_frame(main_mem->frame_tbl, frame_entry);
+                        deallocate_frame(main_mem, frame_entry);
                     }
                 }
             }
@@ -108,15 +99,42 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
         /* If finishing, unallocate every frame allocated, including page tables */
         for(int i=0;i<NUM_FRAMES;i++){
             if(main_mem->frame_tbl->table[i].pid==task->pid){
-                deallocate_frame(main_mem->frame_tbl, main_mem->frame_tbl->table+i);
+                deallocate_frame(main_mem, main_mem->frame_tbl->table+i);
             }
         }
     }
+    tlb_invalidate(gm_subsys->tlb,task);
     
     if(suspend){
         task->status = SWAPPED_OUT;
     }
     else{
+        /* Clear disk map if process is finished */
+        if (!isEmpty(main_mem->disk_map)){
+            q_node* curr = main_mem->disk_map->front;
+            q_node* prev = NULL;
+            while(true) {
+                if(curr->next == NULL)
+                    break;
+                if(((disk_map_entry*)(curr->data_ptr))->pid == task->pid){
+                    if(curr == main_mem->disk_map->front){
+                        main_mem->disk_map->front = main_mem->disk_map->front->next;
+                    }
+                    else{
+                        prev->next = curr->next;
+                    }
+                    if(curr==main_mem->disk_map->rear){
+                        main_mem->disk_map->rear = prev;
+                    }
+                    main_mem->disk_map->node_count--;
+                    curr = curr->next;
+                }
+                else{
+                    prev = curr;
+                    curr = curr->next;
+                }
+            }
+        }
         task->status = FINISHED;
     }
 }

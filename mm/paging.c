@@ -9,19 +9,25 @@ frame_table* init_frame_table(){
     return frm_tbl;
 }
 
-extern void lru_move_to_back(frame_table* frame_tbl, uint32_t* pt_ent){
-    frame_table_entry* mru_entry = lru_remove_by_pgtbl_entry(frame_tbl,pt_ent);
+/*
+Make the frame pointed to by frtbl ent MRU, i.e. push it to back of LRU Queue
+*/
+void lru_move_to_back(frame_table* frame_tbl, frame_table_entry* frtbl_ent){
+    frame_table_entry* mru_entry = lru_remove_by_frame_tbl_entry(frame_tbl,frtbl_ent);
     push(frame_tbl->lru,mru_entry);
 }
 
-frame_table_entry* lru_remove_by_pgtbl_entry(frame_table* frame_tbl, uint32_t* pt_ent){
+/*
+Find and remove a node from LRU Queue by matching frame table entry
+*/
+frame_table_entry* lru_remove_by_frame_tbl_entry(frame_table* frame_tbl, frame_table_entry* frtbl_ent){
     if (isEmpty(frame_tbl->lru))
-        return NULL;        /* Won't Happen */
+        return NULL;
     q_node* curr = frame_tbl->lru->front;
     q_node* prev = NULL;
-    while(((frame_table_entry*)(curr->data_ptr))->page_table_entry != pt_ent) {
+    while(((frame_table_entry*)(curr->data_ptr)) != frtbl_ent) {
         if(curr->next == NULL)
-            return NULL;    /* Won't Happen */
+            return NULL;
         prev = curr;
         curr = curr->next;
     }
@@ -38,6 +44,11 @@ frame_table_entry* lru_remove_by_pgtbl_entry(frame_table* frame_tbl, uint32_t* p
     return (frame_table_entry*)(curr->data_ptr);
 }
 
+/*
+Find and remove a node from LRU Queue by matching it's pid
+In essence get's the LRU frame for a given pid.
+Required for local replacement in case a process reaches maximum number of frames.
+*/
 frame_table_entry* lru_remove_by_pid(frame_table* frame_tbl, int pid){
     if (isEmpty(frame_tbl->lru))
         return NULL;        /* Won't Happen */
