@@ -23,9 +23,9 @@ int main(){
     gm_subsys = init_memory_subsystem();
     printf("Memory System Started!\n");
     gtasks = init_task_list();
-    int pid[5];
+    int pid[5];    
     for(int i=0;i<5;i++){
-        while((pid[i]=init_task())!=-1){
+        while((pid[i]=init_task())==-1){
             /* Means thrashing */
             sleep(1);
         } 
@@ -33,25 +33,36 @@ int main(){
     printf("Tasks Initialised!\n");
     int curr_task=0;
     uint32_t logical_address;
+    int64_t previous_address[5]={-1,-1,-1,-1,-1}; /*Storing previous address in case of page fault */
     while(!isEmpty(gtasks->list)){
         if(run_task(pid[curr_task])){
             int allowed_refrences = (rand()%100+150);
             printf("Task %d started.\n",pid[curr_task]);
             int error;
             while(allowed_refrences-- && (find_task(pid[curr_task]))->status==RUNNING){
-                if(fscanf(traces[curr_task],"%x",&logical_address)<=0){
-                    destroy_task(pid[curr_task]);
-                    break;
+                if(previous_address[curr_task] == -1){
+                    if(fscanf(traces[curr_task],"%x",&logical_address)<=0){
+                        destroy_task(pid[curr_task]);
+                        break;
+                    }
                 }
+                else{
+                    logical_address = previous_address[curr_task];
+                }
+                previous_address[curr_task] = -1;
                 if( (logical_address&0x7F000000) == 0x7F000000){
                     /* code_segment - only load*/
-                    if(error = load_byte(gm_subsys, (find_task(pid[curr_task])), logical_address))
-                        break;    /* Page fault */               
+                    if(error = load_byte(gm_subsys, (find_task(pid[curr_task])), logical_address)){
+                        previous_address[curr_task] = logical_address;
+                        break;    /* Page fault */     
+                    }          
                 }
                 else{
                     /* rand()%2 decides the op:load or store */
-                    if(error = load_store_byte(gm_subsys, (find_task(pid[curr_task])), logical_address,rand()%2))   
+                    if(error = load_store_byte(gm_subsys, (find_task(pid[curr_task])), logical_address,rand()%2)){
+                        previous_address[curr_task] = logical_address;
                         break;    /* Page fault */  
+                    }
                 }
             }
             preempt_task(pid[curr_task]);

@@ -15,9 +15,7 @@ uint32_t get_frame_no_tlb(trans_look_buff *tlb, task_struct *task, uint32_t line
     for (int i = 0; i < tlb->node_count; i++) {
         entry = node->data_ptr;
 
-        if (entry->page_no == requested_page_no && entry->valid) {
-            if (entry->pid != task->pid)
-                continue;
+        if (entry->page_no == requested_page_no && entry->pid == task->pid && entry->valid) {
             entry->page_table_entry = entry->page_table_entry | WORKING_SET_BIT;   /* Set working set bit */
             return entry->frame_no;
         }
@@ -76,7 +74,8 @@ void set_dirty_bit_tlb(trans_look_buff *tlb, uint32_t frame_no){
 /* If replacement occurs, write the page table entry back to main memory as working set and dirty bits might have been updated */
 void tlb_push(trans_look_buff *tlb, tlb_entry* entry){
     if (isFull(tlb)){
-        *(gm_subsys->main_mem->frame_tbl->table->page_table_entry) = entry->page_table_entry; 
+        q_node* node = pop(tlb);
+        *(gm_subsys->main_mem->frame_tbl->table[((tlb_entry*)node->data_ptr)->frame_no].page_table_entry) =((tlb_entry*)node->data_ptr)->page_table_entry; 
     }
     push(tlb, entry);
 }

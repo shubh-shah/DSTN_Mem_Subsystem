@@ -109,23 +109,26 @@ void* _do_page_fault(void* args){
     This routine handles page faults.
 */
 void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl){
-    printf("Page Fault for: %x",linear_address);
     if(is_valid_entry(*invalid_entry)){
         return;
     }
     task->status = WAITING;
     /* Set arguments */
-    // pthread_t tid_listen;
-    // pthread_attr_t attr;
-    // pthread_attr_init(&attr);
-    // pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    /* 
+    pthread_t tid_listen;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    */
     struct pass_pg_fault* args = malloc(sizeof(struct pass_pg_fault));
     args->invalid_entry = invalid_entry;
     args->linear_address = linear_address;
     args->is_pgtbl = is_pgtbl;
     args->main_mem = main_mem;
     args->task = task;
-    // pthread_create(&tid_listen,&attr,_do_page_fault,(void*)args);
+    /* 
+    pthread_create(&tid_listen,&attr,_do_page_fault,(void*)args);
+    */
     _do_page_fault((void*)args);
 }
 
@@ -189,7 +192,6 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
     for(int i=0;i<PG_SIZE;i++){
         main_mem->mem_arr[(frame_no<<PT_SHIFT)+i] = 0;
     }
-    printf(" Frame Provided: %d\n",frame_no);
     return frame_no;
 }
 
@@ -233,52 +235,46 @@ void working_set_interrupt_handler(int sig){
         return;
     q_node* curr = gtasks->list->front;
     int i=0;
-
     /* Iterate through all tasks */
     while(curr != NULL) {
         task_struct* task = ((task_struct*)(curr->data_ptr));
         count_per_process[i]=0;
+        
 
         /* Don't bother if already swapped out */
         if(task->status != SWAPPED_OUT){
-            /* Iterate through all the valid pages: If a directory entry is invalid we, skip multiple page numbers accordingly */
-            for(uint32_t page_no=0;page_no<=UINT32_MAX/PG_SIZE;){
-                uint32_t linear_address = page_no*PG_SIZE;
-                /* Page Table Walk */
-                if(pgd_index(linear_address) >= task->ptlr)      
-                    break;
-
-                uint32_t* pgd_ent = pgd_entry(task, linear_address);
+            for(uint32_t pgd_offset=0;pgd_offset<task->ptlr;pgd_offset++){
+                uint32_t* pgd_ent = pgd_entry_from_offset(task, pgd_offset);
                 if(!is_valid_entry(*pgd_ent)){
-                    page_no += ENTRY_PER_PG*ENTRY_PER_PG*ENTRY_PER_PG;  /* Skip these page numbers are we know they are invalid */
-                }
-
-                uint32_t* pmd_ent = pmd_entry(gm_subsys->main_mem->mem_arr, *pgd_ent, linear_address);
-                if(!is_valid_entry(*pmd_ent)){
-                    page_no += ENTRY_PER_PG*ENTRY_PER_PG;               /* Skip these page numbers are we know they are invalid */
-                }
-
-                uint32_t* pld_ent = pld_entry(gm_subsys->main_mem->mem_arr, *pmd_ent, linear_address);
-                if(!is_valid_entry(*pld_ent)){
-                    page_no += ENTRY_PER_PG;                            /* Skip these page numbers are we know they are invalid */
                     continue;
                 }
-                uint32_t* pt_ent = pt_entry(gm_subsys->main_mem->mem_arr, *pld_ent, linear_address);
-
-                page_no++;
-                if(!is_valid_entry(*pt_ent)){
-                    continue;
+                for(uint32_t pmd_offset=0;pmd_offset<ENTRY_PER_PG;pmd_offset++){
+                    uint32_t* pmd_ent = pmd_entry_from_offset(gm_subsys->main_mem->mem_arr, *pgd_ent, pmd_offset);
+                    if(!is_valid_entry(*pmd_ent)){
+                        continue;
+                    }
+                    for(uint32_t pld_offset=0;pld_offset<ENTRY_PER_PG;pld_offset++){
+                        uint32_t* pld_ent = pld_entry_from_offset(gm_subsys->main_mem->mem_arr, *pmd_ent, pld_offset);
+                        if(!is_valid_entry(*pld_ent)){
+                            continue;
+                        }
+                        for(uint32_t pt_offset=0;pt_offset<ENTRY_PER_PG;pt_offset++){
+                            uint32_t* pt_ent = pt_entry_from_offset(gm_subsys->main_mem->mem_arr, *pld_ent, pt_offset);
+                            if(!is_valid_entry(*pt_ent)){
+                                continue;
+                            }
+                            /* Get the working set bits */
+                            uint32_t working_set_bits = (*pt_ent)&WORKING_SET_MASK;
+                            if(working_set_bits){
+                                count_per_process[i]++;
+                            }
+                            /* Right shift */
+                            working_set_bits = (working_set_bits>>(WORKING_SET_SHIFT+1))<<WORKING_SET_SHIFT;
+                            (*pt_ent) = reset_bit_pgtbl_entry((*pt_ent),WORKING_SET_MASK);
+                            (*pt_ent) |= working_set_bits; 
+                        }
+                    }
                 }
-
-                /* Get the working set bits */
-                uint32_t working_set_bits = (*pt_ent)&WORKING_SET_MASK;
-                if(working_set_bits){
-                    count_per_process[i]++;
-                }
-                /* Right shift */
-                working_set_bits = (working_set_bits>>(WORKING_SET_SHIFT+1))<<WORKING_SET_SHIFT;
-                (*pt_ent) = reset_bit_pgtbl_entry((*pt_ent),WORKING_SET_MASK);
-                (*pt_ent) |= working_set_bits; 
             }
             total_count+=count_per_process[i];
         }
@@ -293,7 +289,7 @@ void working_set_interrupt_handler(int sig){
         /* Search for a victim process */
         q_node* swap_node = gtasks->list->front;
         while(swap_node != NULL) {
-            if(((task_struct*)(swap_node->data_ptr))->status == READY || ((task_struct*)(swap_node->data_ptr))->status == WAITING){//Need to send signal if thread
+            if(((task_struct*)(swap_node->data_ptr))->status == READY || ((task_struct*)(swap_node->data_ptr))->status == WAITING){
                 break;
             }
             swap_node = swap_node->next;
@@ -302,7 +298,6 @@ void working_set_interrupt_handler(int sig){
         if(swap_node!=NULL){
             unload_task(gm_subsys->main_mem, swap_node->data_ptr, 1);
         }
-        // need frame blocking here too if pthread
     }
     else if(total_count<LOWER_LIMIT_THRASHING){
         /* Allow new processes */
@@ -322,7 +317,5 @@ void working_set_interrupt_handler(int sig){
     setitimer(ITIMER_VIRTUAL,&period,NULL);
 }
 
-//Keep a start searching pointer for get_zeroed_page?
 // frame_table_entry* free_frames_list;
-//Working set page walk
 // Recursive make
