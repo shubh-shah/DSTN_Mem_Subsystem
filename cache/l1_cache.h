@@ -41,7 +41,7 @@ extern l1_cache *init_l1_cache();
 
 extern bool read_l1_cache(l1_cache *cache, uint32_t physical_address);
 
-extern bool write_l1_cache(l1_cache *l1, l2_cache *l2, uint32_t physical_address, bool updating);
+extern bool write_l1_cache(l1_cache *l1, uint32_t physical_address);
 
 extern bool update_l1_cache(l1_cache *l1, uint32_t physical_address);
 

@@ -43,7 +43,7 @@ void mark_recency(bool matrix[L1_SET_SIZE][L1_SET_SIZE], int i) {
 // If returned false, means write miss. In this case, call read_l2_cache(). Irrespective if it returns true/ false,
 // call read_memory() also as l2 is read aside. Update l2_cache() if read_l2_cache() returned false.
 // Next update l1 cache using update_l1_cache(). Call write_l1_cache() again. This time, it should be write hit and will return true.
-bool write_l1_cache(l1_cache *l1, l2_cache *l2, uint32_t physical_address) {
+bool write_l1_cache(l1_cache *l1, uint32_t physical_address) {
 
     uint8_t offset = physical_address & L1_OFFSET_MASK;
     uint8_t index = (physical_address >> L1_INDEX_SHIFT) & L1_INDEX_MASK;
