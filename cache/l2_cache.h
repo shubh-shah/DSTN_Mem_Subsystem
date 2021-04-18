@@ -50,4 +50,6 @@ extern bool read_l2_cache(l2_cache *cache, uint32_t physical_address);
 
 extern bool write_l2_cache(l2_cache *cache, uint32_t physical_address);
 
+extern void update_l2_cache(l2_cache *cache, main_memory *mm, uint32_t physical_address);
+
 #endif
