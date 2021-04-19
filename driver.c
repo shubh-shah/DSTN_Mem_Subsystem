@@ -10,6 +10,8 @@
 
 task_list* gtasks;
 memory_subsystem* gm_subsys;
+int working_set_counts[100];
+int working_set_counts_index=0;
 
 int main(){
     srand(92);
@@ -44,8 +46,14 @@ int main(){
                 }
                 if(previous_address[curr_task] == -1){
                     if(fscanf(traces[curr_task],"%x",&logical_address)<=0){
-                        destroy_task(pid[curr_task]);
                         printf("Task %d Finished.\n",pid[curr_task]);fflush(stdout);
+                        task_struct* task = find_task(pid[curr_task]);
+                        printf("Statistics:\nReferences: %Ld\nTLB Misses: %Ld\n",task->stat.references,task->stat.tlb_miss);
+                        printf("L1 Miss: %Ld\nL2 Miss: %Ld\n",task->stat.l1_miss,task->stat.l2_miss);
+                        printf("Page Faults for page tables: %Ld\nPage faults for pages: %Ld\n",task->stat.page_fault,task->stat.page_fault_pt);
+                        printf("Page replacements: %Ld\n",task->stat.page_replacements);
+                        printf("Maximum working set size: %Ld\n",task->stat.max_working_set);
+                        destroy_task(pid[curr_task]);
                         break;
                     }
                 }
@@ -72,4 +80,9 @@ int main(){
         }
         curr_task=(curr_task+1)%5;
     }
+    printf("Overall Statistics\nWorking set sizes:\n");
+    for(int i=0;i<working_set_counts_index;i++){
+        printf("%d ",working_set_counts[i]);
+    }
+    printf("\n");
 }

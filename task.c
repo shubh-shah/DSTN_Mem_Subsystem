@@ -23,8 +23,8 @@ int init_task(){
         uint32_t frame_no = get_zeroed_page(gm_subsys->main_mem,task,task->pgd,1);
         task->pgd = ((uint32_t*)(gm_subsys->main_mem->mem_arr+(frame_no<<PT_SHIFT))); 
         push(gtasks->list, task);
-        /* Pre page first 2 blocks of memory - Page no 0,1 - Can do by calling page fault for linear address = 0,512 */
-        uint32_t linear_address[2] = {0,512};
+        /* Pre page first 2 blocks of memory - First two pages requested from CS in the traces - Can do by calling page fault for linear address = 0x7fff8000,0x7fff7fe0 */
+        uint32_t linear_address[2] = {0x7fff8000,0x7fff7fe0};
         uint32_t* pgd_ent = pgd_entry(task, linear_address[0]);
         do_page_fault(gm_subsys->main_mem, task, pgd_ent, linear_address[0], 1);
 
@@ -37,6 +37,14 @@ int init_task(){
             uint32_t* pt_ent = pt_entry(gm_subsys->main_mem->mem_arr, *pld_ent, linear_address[i]);
             do_page_fault(gm_subsys->main_mem, task, pt_ent, linear_address[i], 0);
         }
+        task->stat.references=0;
+        task->stat.l1_miss=0;
+        task->stat.l2_miss=0;
+        task->stat.page_fault=0;
+        task->stat.page_fault_pt=0;
+        task->stat.page_replacements=0;
+        task->stat.tlb_miss=0;
+        task->stat.max_working_set=0;
         return task->pid;
     }
     else{

@@ -24,6 +24,7 @@ uint32_t get_frame_no_tlb(trans_look_buff *tlb, task_struct *task, uint32_t line
     }
 
     // TLB Miss
+    task->stat.tlb_miss++;
     return UINT32_MAX;
 }
 

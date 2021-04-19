@@ -109,6 +109,12 @@ void* _do_page_fault(void* args){
     This routine handles page faults.
 */
 void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl){
+    if(is_pgtbl){
+        task->stat.page_fault_pt++;
+    }
+    else{
+        task->stat.page_fault++;
+    }
     if(is_valid_entry(*invalid_entry)){
         return;
     }
@@ -165,6 +171,7 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
             /* If no. of frames allowed exceeded, local replacement */
             lru_entry = lru_remove_by_pid(main_mem->frame_tbl, task->pid);
         }
+        task->stat.page_replacements++;
         swap_out(main_mem, task, lru_entry->page_table_entry);
         deallocate_frame(main_mem, lru_entry);
     }else{
@@ -260,35 +267,30 @@ void working_set_interrupt_handler(int sig){
                         }
                         for(uint32_t pt_offset=0;pt_offset<ENTRY_PER_PG;pt_offset++){
                             uint32_t* pt_ent = pt_entry_from_offset(gm_subsys->main_mem->mem_arr, *pld_ent, pt_offset);
-                            // if(!is_valid_entry(*pt_ent)){
-                            //     continue;
-                            // }
                             /* Get the working set bits */
                             uint32_t working_set_bits = (*pt_ent)&WORKING_SET_MASK;
                             if(working_set_bits){
                                 count_per_process[i]++;
                             }
                             /* Right shift */
-                            // if(*pt_ent!=0){
-                            //     printf("%x\n",*pt_ent);
-                            // }
                             working_set_bits = (working_set_bits>>(WORKING_SET_SHIFT+1))<<WORKING_SET_SHIFT;
                             (*pt_ent) = reset_bit_pgtbl_entry((*pt_ent),WORKING_SET_MASK);
                             (*pt_ent) |= working_set_bits; 
-                            
-                            // if(*pt_ent!=0){
-                            //     printf("%x\n",*pt_ent);
-                            // }
                         }
                     }
                 }
             }
             total_count+=count_per_process[i];
+            if(count_per_process[i]>task->stat.max_working_set){
+                task->stat.max_working_set = count_per_process[i];
+            }
         }
         i++;
         curr = curr->next;
     }
-    printf("Thrashing Count: %d\n",total_count);
+    /* Saving for statistics */
+    working_set_counts[working_set_counts_index] = total_count;
+    working_set_counts_index++;
     if(total_count>=UPPER_LIMIT_THRASHING){
         printf("Thrashing Detected %d! Slow down\n",total_count);
         /* Block new processes or swapped out processes */
@@ -327,3 +329,4 @@ void working_set_interrupt_handler(int sig){
 
 // frame_table_entry* free_frames_list;
 // Recursive make
+// Free

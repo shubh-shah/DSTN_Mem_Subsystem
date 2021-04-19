@@ -13,11 +13,23 @@
 #define WAITING 4
 
 typedef struct{
+    long long int references;   /* Call to load_store_byte */
+    long long int tlb_miss;     /* get_frame_no_tlb */
+    long long int l2_miss;      /* After unsucessful Call to read_l1_cache in load_store_byte */
+    long long int l1_miss;      /* After unsucessful Call to read_l2_cache in load_store_byte */
+    long long int page_fault;   /* Call to do_page_fault */
+    long long int page_fault_pt; /* Call to do_page_fault */
+    long long int page_replacements;
+    long long int max_working_set; 
+} statistics;
+
+typedef struct{
     int pid;
     uint32_t* pgd;          /* Highest Page Dir */
     uint32_t ptlr;
     int status;
     int frames_used;
+    statistics stat;
 } task_struct;
 
 typedef struct{

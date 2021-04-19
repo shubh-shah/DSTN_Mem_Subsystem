@@ -18,6 +18,7 @@ memory_subsystem* init_memory_subsystem(){
         Failure(1): Value of mem->reg set to error code
 */
 bool load_store_byte(memory_subsystem* mem, task_struct* task, uint32_t linear_address, bool load){
+    task->stat.references++;
     // printf("Start %d\n",linear_address);fflush(stdout);
     uint32_t offset,frame_no;
 restart:
@@ -40,11 +41,13 @@ restart:
     // printf("Got Physical Address %x\n",physical_address);fflush(stdout);fflush(stdout);
     if(load){
         if(!read_l1_cache(mem->l1cache,physical_address)){
+            task->stat.l1_miss++;
             /* Look Through for l1*/
             bool l2_miss = !read_l2_cache(mem->l2cache,physical_address);
             /* Look aside for l2 */
             read_main_memory(mem->main_mem,physical_address);
             if(l2_miss){
+                task->stat.l2_miss++;
                 update_l2_cache(mem->l2cache,mem->main_mem,physical_address);
             }
             update_l1_cache(mem->l1cache,physical_address);
@@ -52,11 +55,13 @@ restart:
     }
     else{
         if(!write_l1_cache(mem->l1cache, physical_address)){
+            task->stat.l1_miss++;
             /* Write allocate mechanism for write misses - Write miss same as read miss - get data to l1 */
             bool l2_miss = !read_l2_cache(mem->l2cache,physical_address);
             /* Look aside for l2 */
             read_main_memory(mem->main_mem,physical_address);
             if(l2_miss){
+                task->stat.l2_miss++;
                 update_l2_cache(mem->l2cache,mem->main_mem,physical_address);
             }
             update_l1_cache(mem->l1cache,physical_address);

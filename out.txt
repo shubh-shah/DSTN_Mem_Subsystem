@@ -37,80 +37,56 @@ make[1]: Leaving directory '/mnt/d/Projects/Assignments/DSTN/DSTN_Mem_Subsystem/
 gcc -o driver driver.c memory_subsystem.o mm/paging.o mm/swap.o mm/main_memory.o ADT/queue.o tlb/tlb.o cache/l1_cache.o cache/l2_cache.o task.o -lpthread
 Memory System Started!
 Tasks Initialised!
-Thrashing Count: 210
-Thrashing Count: 315
 Task 4 Finished.
-Thrashing Count: 304
-Thrashing Count: 336
-Thrashing Count: 369
-Thrashing Count: 384
-Thrashing Count: 399
-Thrashing Count: 411
-Thrashing Count: 424
-Thrashing Count: 439
-Thrashing Count: 353
-Thrashing Count: 297
-Thrashing Count: 275
-Thrashing Count: 252
-Thrashing Count: 244
-Thrashing Count: 246
-Thrashing Count: 246
-Thrashing Count: 262
-Thrashing Count: 256
-Thrashing Count: 263
-Thrashing Count: 255
-Thrashing Count: 243
-Thrashing Count: 251
+Statistics:
+References: 12280
+TLB Misses: 412
+L1 Miss: 12225
+L1 Miss: 643
+Page Faults for page tables: 50
+Page faults for pages: 5
+Page replacements: 0
+Maximum working set size: 0
 Task 0 Finished.
-Thrashing Count: 212
+Statistics:
+References: 54700
+TLB Misses: 1496
+L1 Miss: 54605
+L1 Miss: 1516
+Page Faults for page tables: 89
+Page faults for pages: 6
+Page replacements: 0
+Maximum working set size: 84
 Task 3 Finished.
-Thrashing Count: 109
-Thrashing Count: 110
-Thrashing Count: 115
-Thrashing Count: 123
-Thrashing Count: 129
-Thrashing Count: 140
-Thrashing Count: 174
-Thrashing Count: 186
-Thrashing Count: 210
-Thrashing Count: 213
+Statistics:
+References: 30875
+TLB Misses: 810
+L1 Miss: 30498
+L1 Miss: 4635
+Page Faults for page tables: 307
+Page faults for pages: 5
+Page replacements: 0
+Maximum working set size: 282
 Task 2 Finished.
-Thrashing Count: 149
-Thrashing Count: 147
-Thrashing Count: 137
-Thrashing Count: 116
-Thrashing Count: 108
-Thrashing Count: 99
-Thrashing Count: 95
-Thrashing Count: 98
-Thrashing Count: 90
-Thrashing Count: 89
-Thrashing Count: 86
-Thrashing Count: 63
-Thrashing Count: 62
-Thrashing Count: 56
-Thrashing Count: 49
-Thrashing Count: 42
-Thrashing Count: 23
-Thrashing Count: 22
-Thrashing Count: 22
-Thrashing Count: 23
-Thrashing Count: 23
-Thrashing Count: 11
-Thrashing Count: 21
-Thrashing Count: 22
-Thrashing Count: 21
-Thrashing Count: 21
-Thrashing Count: 21
-Thrashing Count: 22
-Thrashing Count: 22
-Thrashing Count: 17
-Thrashing Count: 17
-Thrashing Count: 18
-Thrashing Count: 7
-Thrashing Count: 2
-Thrashing Count: 2
-Thrashing Count: 33
-Thrashing Count: 33
-Thrashing Count: 33
+Statistics:
+References: 90711
+TLB Misses: 2897
+L1 Miss: 90587
+L1 Miss: 3270
+Page Faults for page tables: 120
+Page faults for pages: 4
+Page replacements: 0
+Maximum working set size: 114
 Task 1 Finished.
+Statistics:
+References: 223646
+TLB Misses: 4687
+L1 Miss: 222986
+L1 Miss: 4152
+Page Faults for page tables: 296
+Page faults for pages: 8
+Page replacements: 0
+Maximum working set size: 239
+Overall Statistics
+Working set sizes:
+300 425 468 516 543 594 234 252 282 353 215 199 212 206 202 200 193 147 121 93 72 65 
