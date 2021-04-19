@@ -6,11 +6,50 @@ l1_cache *init_l1_cache() {
     return cache;
 }
 
-// Look through.
-// If this function returns false then call read_l2_cache(). Irrespective if it returns true/ false, call read_memory()
-// also as l2 is read aside. Update l2_cache() if read_l2_cache() returned false.
-// Next update l1 cache using update_l1_cache(). No need to call read_l1_cache() again as data was supplied directly to the processor
-// by l2 cache or memory.
+/*
+   Input:
+       2d L1_SET_SIZE*L1_SET_SIZE size array
+       Integer i, the way number whose block was recently accessed
+*/
+void mark_recency(bool matrix[L1_SET_SIZE][L1_SET_SIZE], int i) {
+    for (int j = 0; j < L1_SET_SIZE; ++j) {
+        matrix[i][j] = 1;
+        matrix[j][i] = 0;
+    }
+}
+
+/*
+   Input:
+       2d L1_SET_SIZE*L1_SET_SIZE size array
+       Integer i, the set number which was recently accessed
+   Returns:
+        The way number (0 to L1_SET_SIZE-1) whose block will be replaced
+*/
+int get_block_to_replace(bool matrix[L1_SET_SIZE][L1_SET_SIZE]) {
+    bool replaceable;
+    for (int i = 0; i < L1_SET_SIZE; ++i) {
+        replaceable = true;
+        for (int j = 0; j < L1_SET_SIZE; ++j) {
+            if (matrix[i][j] == 1) {
+                replaceable = false;
+                break;
+            }
+        }
+        if (replaceable)
+            return i;
+    }
+    return -1;
+}
+
+/*
+   Called when a process is trying to read data. Read is Look Through, so read L2 cache only if this returns false. In
+   that case, data is supplied directly to the processor by the higher levels, so this function is not called again.
+   Input:
+       Physical Address
+   Returns:
+       True if Read Hit
+       False if Read Miss
+*/
 bool read_l1_cache(l1_cache *cache, uint32_t physical_address) {
     uint8_t offset = physical_address & L1_OFFSET_MASK;
     uint8_t index = (physical_address >> L1_INDEX_SHIFT) & L1_INDEX_MASK;
@@ -23,25 +62,21 @@ bool read_l1_cache(l1_cache *cache, uint32_t physical_address) {
             mark_recency(set->matrix, i);
             // 2nd cycle: activate 1 (out of 4) data block array and retrieve the 16B block
             // read the byte at the offset and put it in the processor-l1 bus
-            return true; // cache hit
+            return true;
         }
     }
-    return false; // cache miss
+    return false;
 }
 
-void mark_recency(bool matrix[L1_SET_SIZE][L1_SET_SIZE], int i) {
-    for (int j = 0; j < L1_SET_SIZE; ++j) {
-        matrix[i][j] = 1;
-        matrix[j][i] = 0;
-    }
-}
-
-
-// Write through. Every write to l1 results in write to l2. call write_l2_cache() immediately after this returns true.
-// Return true if the block to which we want to write is present in the cache, else false
-// If returned false, means write miss. In this case, call read_l2_cache(). Irrespective if it returns true/ false,
-// call read_memory() also as l2 is read aside. Update l2_cache() if read_l2_cache() returned false.
-// Next update l1 cache using update_l1_cache(). Call write_l1_cache() again. This time, it should be write hit and will return true.
+/*
+   Called when a process is writing data. Write Through, so write to L2 cache immediately after this returns true. If
+   returned false, read from higher levels and update the L1 cache. Call this function again and it will be write hit.
+   Input:
+       Physical Address
+   Returns:
+       True if Write Hit
+       False if Write Miss
+*/
 bool write_l1_cache(l1_cache *l1, uint32_t physical_address) {
     uint8_t offset = physical_address & L1_OFFSET_MASK;
     uint8_t index = (physical_address >> L1_INDEX_SHIFT) & L1_INDEX_MASK;
@@ -62,7 +97,14 @@ bool write_l1_cache(l1_cache *l1, uint32_t physical_address) {
     return false;
 }
 
-// This function is called only after there was a cache read/write miss earlier. Call this to get data from l2 to l1 cache
+/*
+   Called only after there was a cache read/write miss earlier. Call this to get data from higher levels to L1 cache
+   Input:
+       Physical Address
+   Returns:
+       True if update was successful
+       False - Should never return. Indicates that no block could be replaced.
+*/
 bool update_l1_cache(l1_cache *l1, uint32_t physical_address) {
     uint8_t offset = physical_address & L1_OFFSET_MASK;
     uint8_t index = (physical_address >> L1_INDEX_SHIFT) & L1_INDEX_MASK;
@@ -96,21 +138,4 @@ bool update_l1_cache(l1_cache *l1, uint32_t physical_address) {
     set->valid[way_no] = true;
     mark_recency(set->matrix, way_no);
     return true;
-}
-
-// returns the way number {0,1,2,3} of the block to be replaced
-int get_block_to_replace(bool matrix[L1_SET_SIZE][L1_SET_SIZE]) {
-    bool replaceable;
-    for (int i = 0; i < L1_SET_SIZE; ++i) {
-        replaceable = true;
-        for (int j = 0; j < L1_SET_SIZE; ++j) {
-            if (matrix[i][j] == 1) {
-                replaceable = false;
-                break;
-            }
-        }
-        if (replaceable)
-            return i;
-    }
-    return -1;
 }

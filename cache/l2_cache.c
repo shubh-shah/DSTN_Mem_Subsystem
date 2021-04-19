@@ -1,5 +1,4 @@
 #include "l2_cache.h"
-#include "../global_variables.h"
 
 l2_cache *init_l2_cache() {
     l2_cache *cache = (l2_cache *) malloc(sizeof(l2_cache));
@@ -9,9 +8,47 @@ l2_cache *init_l2_cache() {
     return cache;
 }
 
-// Look aside. Call read_memory() just after calling this, even if it returns true
-// If this returned false, then after read_memory() call update_l2_cache(). No need to call read_l2_cache() again as
-// data was supplied directly to the processor by the memory
+/*
+   Pushes the New Block at the rear of the Block Queue
+   Input:
+       Pointer to a Queue of Blocks in a Set
+       Pointer to an initialized l2_cache_block
+       Pointer to the main_memory of the memory_subsystem
+*/
+void custom_push(queue *q, void *data, main_memory *mm) {
+    // If maximum limit on number of nodes is reached
+    if (isFull(q))
+        custom_pop(q, mm);
+
+    push(q, data);
+}
+
+/*
+   Pops a block from the front of the Block Queue and writes it to the Main Memory if dirty(modified)
+   Input:
+       Pointer to a Queue of Blocks in a Set
+       Pointer to the main_memory of the memory_subsystem
+*/
+void custom_pop(queue *q, main_memory *mm) {
+
+    q_node *node = pop(q);
+    l2_cache_block *block = node->data_ptr;
+    if (block->dirty) {
+        uint32_t physical_address = (((block->tag << L2_INDEX_BITS) + block->index) << L2_OFFSET_BITS) + block->offset;
+        // write the block data to the l2-memory bus
+        write_main_memory(mm, gm_subsys->tlb, physical_address);
+    }
+}
+
+/*
+   Called when L1 read is a miss. Read is Look Aside, so read from Main Memory immediately after this regardless it returns
+   true/false. In case of miss, this function is not called again as data is supplied directly to the processor by the Memory
+   Input:
+       Physical Address
+   Returns:
+       True if Read Hit
+       False if Read Miss
+*/
 bool read_l2_cache(l2_cache *cache, uint32_t physical_address) {
     uint8_t offset = physical_address & L2_OFFSET_MASK;
     uint8_t index = (physical_address >> L2_INDEX_SHIFT) & L2_INDEX_MASK;
@@ -32,11 +69,15 @@ bool read_l2_cache(l2_cache *cache, uint32_t physical_address) {
     return false; // cache miss
 }
 
-// Write back. So write to main memory takes place during replacement
-// this function is called only after write_l1_cache() returns true.
-// Return true if the block to which we want to write is present in the cache, else false
-// If returned false, means write miss. In this case, call read_memory(). Update l2 cache using update_l2_cache() and then
-// call write_l2_cache() again. This time, it should be write hit and will return true.
+/*
+   Called when write to L1 cache occurs. Write Back, so write to main memory takes place during replacement. If returned
+   false, read from Main Memory and update the L2 cache. Call this function again and it will be write hit.
+   Input:
+       Physical Address
+   Returns:
+       True if Write Hit
+       False if Write Miss
+*/
 bool write_l2_cache(l2_cache *cache, uint32_t physical_address) {
 
     uint8_t offset = physical_address & L2_OFFSET_MASK;
@@ -62,7 +103,11 @@ bool write_l2_cache(l2_cache *cache, uint32_t physical_address) {
     return false;
 }
 
-// This function is called only after there was a cache read/write miss earlier. Call this to get data from memory to l2 cache
+/*
+   Called only after there was a cache read/write miss earlier. Call this to get data from Main Memory to L2 cache
+   Input:
+       Physical Address
+*/
 void update_l2_cache(l2_cache *cache, main_memory *mm, uint32_t physical_address) {
     uint8_t offset = physical_address & L2_OFFSET_MASK;
     uint8_t index = (physical_address >> L2_INDEX_SHIFT) & L2_INDEX_MASK;
@@ -96,23 +141,4 @@ void update_l2_cache(l2_cache *cache, main_memory *mm, uint32_t physical_address
     new_block->dirty = 0; // As it has the same data as in memory after the update
     custom_push(set.tags, new_block, mm);
     return;
-}
-
-void custom_push(queue *q, void *data, main_memory *mm) {
-    // If maximum limit on number of nodes is reached
-    if (isFull(q))
-        custom_pop(q, mm);
-
-    push(q, data);
-}
-
-void custom_pop(queue *q, main_memory *mm) {
-
-    q_node *node = pop(q);
-    l2_cache_block *block = node->data_ptr;
-    if (block->dirty) {
-        uint32_t physical_address = (((block->tag << L2_INDEX_BITS) + block->index) << L2_OFFSET_BITS) + block->offset;
-        // write the block data to the l2-memory bus
-       write_main_memory(mm, gm_subsys->tlb, physical_address);
-    }
 }

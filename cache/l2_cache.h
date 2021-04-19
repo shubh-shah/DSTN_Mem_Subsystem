@@ -6,8 +6,9 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "../util/queue.h"
+#include "../global_variables.h"
 #include "../mm/main_memory.h"
+#include "../util/queue.h"
 
 #define L2_OFFSET_BITS 5
 #define L2_INDEX_BITS 7

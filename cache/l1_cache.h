@@ -33,11 +33,11 @@ typedef struct {
 } l1_cache;
 
 
-int get_block_to_replace(bool matrix[L1_SET_SIZE][L1_SET_SIZE]);
+extern l1_cache *init_l1_cache();
 
 void mark_recency(bool matrix[L1_SET_SIZE][L1_SET_SIZE], int i);
 
-extern l1_cache *init_l1_cache();
+int get_block_to_replace(bool matrix[L1_SET_SIZE][L1_SET_SIZE]);
 
 extern bool read_l1_cache(l1_cache *cache, uint32_t physical_address);
 
