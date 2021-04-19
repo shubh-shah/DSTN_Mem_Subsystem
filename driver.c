@@ -108,3 +108,8 @@ int main(){
     printf("Maximum working set size: %Ld\n",max_working_set);
     printf("Simulation Done!\n");
 }
+
+//Seprate read write misses
+//References for l1 l2
+//Context switches
+//no of time thrashing

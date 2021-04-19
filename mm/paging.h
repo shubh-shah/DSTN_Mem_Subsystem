@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../ADT/queue.h"
+#include "../util/queue.h"
 #define MM_SIZE (32*1024*1024)                      /* 32MB */
 #define PG_SIZE 512                                 /* 512B */
 

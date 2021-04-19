@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 #include "../task.h"
-#include "../ADT/queue.h"
+#include "../util/queue.h"
 #include "../mm/paging.h"
 
 #define NUM_BITS_PAGE 23

@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "../ADT/queue.h"
+#include "../util/queue.h"
 #include "../mm/main_memory.h"
 
 #define L2_OFFSET_BITS 5

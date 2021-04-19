@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "ADT/queue.h"
+#include "util/queue.h"
 
 /* Process Status codes */
 #define RUNNING 0
