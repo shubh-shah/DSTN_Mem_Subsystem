@@ -77,6 +77,7 @@ typedef struct{
 
 typedef struct{
     frame_table_entry table[NUM_FRAMES];
+    int start_search_index;
     queue* lru;
 } frame_table;
 

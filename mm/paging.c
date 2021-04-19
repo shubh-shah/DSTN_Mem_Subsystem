@@ -6,6 +6,7 @@ frame_table* init_frame_table(){
         frm_tbl->table[i].valid = 0;
     }
     frm_tbl->lru = createQueue(NUM_FRAMES);
+    frm_tbl->start_search_index = 0;
     return frm_tbl;
 }
 

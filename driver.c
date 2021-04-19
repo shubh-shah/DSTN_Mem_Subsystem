@@ -46,7 +46,6 @@ int main(){
     long long int page_fault = 0; 
     long long int page_fault_pt = 0; 
     long long int page_replacements = 0;
-    long long int max_working_set = 0;
     long long int context_switches = 0;
     printf("Tasks Initialised!\n");
     int curr_task=0;
@@ -85,7 +84,6 @@ int main(){
                         page_fault+=task->stat.page_fault; 
                         page_fault_pt+=task->stat.page_fault_pt;
                         page_replacements+=task->stat.page_replacements;
-                        max_working_set+=task->stat.max_working_set; 
                         destroy_task(gtasks, pid[curr_task]);
                         break;
                     }
@@ -127,7 +125,6 @@ int main(){
     printf("L2 Miss: %Ld (/%Ld)\n\t",l2_miss, l1_read_miss+l1_write_miss);
     printf("Page faults for pages: %Ld (/%Ld)\n\tPage Faults for page tables: %Ld\n\t",page_fault,references,page_fault_pt);
     printf("Page replacements: %Ld\n\t",page_replacements);
-    printf("Maximum working set size: %Ld\n\t",max_working_set);
     printf("No of times thrashing occured: %d\n\t",frequency_thrashing);
     printf("Context Switches: %Ld\n",context_switches);
     printf("Simulation Done!\n");

@@ -191,12 +191,15 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
         deallocate_frame(main_mem, lru_entry);
     }else{
         /* Get a free frame */
-        for(int i=0;i<NUM_FRAMES;i++){
+        int i=main_mem->frame_tbl->start_search_index;
+        do{
             if(!main_mem->frame_tbl->table[i].valid){
                 lru_entry = (main_mem->frame_tbl->table)+i;
                 break;
             }
-        }
+            i=(i+1)%NUM_FRAMES;
+        }while(i!=main_mem->frame_tbl->start_search_index);
+        main_mem->frame_tbl->start_search_index= i+1;
     }
     /* Update Frame Table Entry */
     lru_entry->page_table_entry = pgtbl_entry;
