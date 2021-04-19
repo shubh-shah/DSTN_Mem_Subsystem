@@ -19,7 +19,6 @@ memory_subsystem* init_memory_subsystem(){
 */
 bool load_store_byte(memory_subsystem* mem, task_struct* task, uint32_t linear_address, bool load){
     task->stat.references++;
-    // printf("Start %d\n",linear_address);fflush(stdout);
     uint32_t offset,frame_no;
 restart:
     /* Split Linear Address */
@@ -38,10 +37,11 @@ restart:
         goto restart;
     }
     uint32_t physical_address = (frame_no<<PT_SHIFT)+offset;
-    // printf("Got Physical Address %x\n",physical_address);fflush(stdout);fflush(stdout);
+
     if(load){
+        task->stat.l1_read_access++;
         if(!read_l1_cache(mem->l1cache,physical_address)){
-            task->stat.l1_miss++;
+            task->stat.l1_read_miss++;
             /* Look Through for l1*/
             bool l2_miss = !read_l2_cache(mem->l2cache,physical_address);
             /* Look aside for l2 */
@@ -51,11 +51,13 @@ restart:
                 update_l2_cache(mem->l2cache,mem->main_mem,physical_address);
             }
             update_l1_cache(mem->l1cache,physical_address);
+            read_l1_cache(mem->l1cache,physical_address);
         }
     }
     else{
+        task->stat.l1_write_access++;
         if(!write_l1_cache(mem->l1cache, physical_address)){
-            task->stat.l1_miss++;
+            task->stat.l1_write_miss++;
             /* Write allocate mechanism for write misses - Write miss same as read miss - get data to l1 */
             bool l2_miss = !read_l2_cache(mem->l2cache,physical_address);
             /* Look aside for l2 */

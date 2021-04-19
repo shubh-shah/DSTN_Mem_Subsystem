@@ -24,7 +24,7 @@ uint32_t get_frame_no_tlb(trans_look_buff *tlb, task_struct *task, uint32_t line
     for (int i = 0; i < tlb->node_count; i++) {
         entry = node->data_ptr;
 
-        if (entry->page_no == requested_page_no && entry->pid == task->pid && entry->valid) {
+        if (entry->page_no == requested_page_no && (entry->pid == task->pid || entry->pid == -1) && entry->valid) {
             entry->page_table_entry = entry->page_table_entry | WORKING_SET_BIT;   /* Set working set bit */
             return entry->frame_no;
         }

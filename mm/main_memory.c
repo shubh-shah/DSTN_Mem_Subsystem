@@ -89,7 +89,14 @@ void* _do_page_fault(void* args){
         return NULL;
     }
 
-    uint32_t frame_no = get_zeroed_page(main_mem, task, entry, is_pgtbl);
+    uint32_t frame_no;
+    int is_global = !(rand()%256);  /* Probability = 1/256 */
+    if(is_global){
+        frame_no = get_global_zeroed_page(main_mem, task, entry, is_pgtbl);
+    }
+    else{
+        frame_no = get_zeroed_page(main_mem, task, entry, is_pgtbl);
+    }
     /* Update page table entry */
     *entry = frame_no;
     if(!is_pgtbl){
@@ -101,6 +108,9 @@ void* _do_page_fault(void* args){
         }
     }
     *entry |= VALID_MASK;
+    if(is_global){
+        *entry |= GLOBAL_MASK;
+    }
     /* Update task status */
     task->status = READY;
     return NULL;
@@ -142,7 +152,7 @@ void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_e
 If frame not global, deallocate corresponding frame and Invalidate the page
 */
 void deallocate_frame(main_memory* main_mem, frame_table_entry* entry){
-    if(entry->pid!=-1){
+    if(entry->pid!=-1 && !((*(entry->page_table_entry))&GLOBAL_MASK)){
         /* Update Frame Table Entry */
         entry->valid = 0;
         /* Update Page Table Entry */
@@ -151,7 +161,7 @@ void deallocate_frame(main_memory* main_mem, frame_table_entry* entry){
         lru_remove_by_frame_tbl_entry(main_mem->frame_tbl, entry);
         /* Update Global Counters */
         main_mem->nr_free_frames++;
-        find_task(entry->pid)->frames_used--;
+        find_task(gtasks, entry->pid)->frames_used--;
     }
 }
 
@@ -202,7 +212,6 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
     return frame_no;
 }
 
-//Not called anywhere
 uint32_t get_global_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl){
     uint32_t frame_no = get_zeroed_page(main_mem, task, pgtbl_entry, is_pgtbl);
     lru_remove_by_frame_tbl_entry(main_mem->frame_tbl, main_mem->frame_tbl->table+frame_no);    /* Remove from lru queue to make it non replaceable */
@@ -292,7 +301,7 @@ void working_set_interrupt_handler(int sig){
     working_set_counts[working_set_counts_index] = total_count;
     working_set_counts_index++;
     if(total_count>=UPPER_LIMIT_THRASHING){
-        printf("Thrashing Detected %d! Slow down\n",total_count);
+        frequency_thrashing++;
         /* Block new processes or swapped out processes */
         gm_subsys->main_mem->thrashing = 1; 
         
@@ -326,8 +335,3 @@ void working_set_interrupt_handler(int sig){
     period.it_value=interval;
     setitimer(ITIMER_VIRTUAL,&period,NULL);
 }
-
-// frame_table_entry* free_frames_list;
-// Recursive make
-// Free
-//Locking for woorking set swap

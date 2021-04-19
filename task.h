@@ -16,11 +16,15 @@ typedef struct{
     long long int references;   /* Call to load_store_byte */
     long long int tlb_miss;     /* get_frame_no_tlb */
     long long int l2_miss;      /* After unsucessful Call to read_l1_cache in load_store_byte */
-    long long int l1_miss;      /* After unsucessful Call to read_l2_cache in load_store_byte */
+    long long int l1_read_miss;      /* After unsucessful Call to read_l2_cache in load_store_byte */
+    long long int l1_write_miss;      /* After unsucessful Call to read_l2_cache in load_store_byte */
+    long long int l1_read_access;
+    long long int l1_write_access;
     long long int page_fault;   /* Call to do_page_fault */
     long long int page_fault_pt; /* Call to do_page_fault */
     long long int page_replacements;
     long long int max_working_set; 
+    long long int swapped_out;
 } statistics;
 
 typedef struct{
@@ -39,10 +43,10 @@ typedef struct{
 
 extern task_list* init_task_list();
 
-extern int init_task();
-extern task_struct* find_task(int pid);
-extern bool run_task(int pid);
-extern bool preempt_task(int pid);
-extern bool destroy_task(int pid);
+extern int init_task(task_list* tasks);
+extern task_struct* find_task(task_list* tasks, int pid);
+extern bool run_task(task_list* tasks, int pid);
+extern bool preempt_task(task_list* tasks, int pid);
+extern bool destroy_task(task_list* tasks, int pid);
 
 #endif

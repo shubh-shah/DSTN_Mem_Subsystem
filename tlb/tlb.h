@@ -16,7 +16,7 @@
 typedef struct {
     bool global;
     bool valid;
-    uint8_t pid;
+    int pid;
     uint32_t page_no: NUM_BITS_PAGE;
     uint32_t frame_no: NUM_BITS_FRAME;
     uint32_t page_table_entry;

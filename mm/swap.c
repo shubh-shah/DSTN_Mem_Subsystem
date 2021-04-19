@@ -71,17 +71,17 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
                 continue;
             }
             for(uint32_t pmd_offset=0;pmd_offset<ENTRY_PER_PG;pmd_offset++){
-                uint32_t* pmd_ent = pmd_entry_from_offset(gm_subsys->main_mem->mem_arr, *pgd_ent, pmd_offset);
+                uint32_t* pmd_ent = pmd_entry_from_offset(main_mem->mem_arr, *pgd_ent, pmd_offset);
                 if(!is_valid_entry(*pmd_ent)){
                     continue;
                 }
                 for(uint32_t pld_offset=0;pld_offset<ENTRY_PER_PG;pld_offset++){
-                    uint32_t* pld_ent = pld_entry_from_offset(gm_subsys->main_mem->mem_arr, *pmd_ent, pld_offset);
+                    uint32_t* pld_ent = pld_entry_from_offset(main_mem->mem_arr, *pmd_ent, pld_offset);
                     if(!is_valid_entry(*pld_ent)){
                         continue;
                     }
                     for(uint32_t pt_offset=0;pt_offset<ENTRY_PER_PG;pt_offset++){
-                        uint32_t* pt_ent = pt_entry_from_offset(gm_subsys->main_mem->mem_arr, *pld_ent, pt_offset);
+                        uint32_t* pt_ent = pt_entry_from_offset(main_mem->mem_arr, *pld_ent, pt_offset);
                         if(!is_valid_entry(*pt_ent)){
                             continue;
                         }
@@ -106,6 +106,7 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
     tlb_invalidate(gm_subsys->tlb,task);
     
     if(suspend){
+        task->stat.swapped_out++;
         task->status = SWAPPED_OUT;
     }
     else{
