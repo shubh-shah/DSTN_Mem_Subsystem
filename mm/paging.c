@@ -10,7 +10,7 @@ frame_table* init_frame_table(){
 }
 
 /*
-Make the frame pointed to by frtbl ent MRU, i.e. push it to back of LRU Queue
+Make the frame pointed to by frtbl_ent MRU, i.e. push it to back of LRU Queue
 */
 void lru_move_to_back(frame_table* frame_tbl, frame_table_entry* frtbl_ent){
     frame_table_entry* mru_entry = lru_remove_by_frame_tbl_entry(frame_tbl,frtbl_ent);
@@ -25,12 +25,14 @@ frame_table_entry* lru_remove_by_frame_tbl_entry(frame_table* frame_tbl, frame_t
         return NULL;
     q_node* curr = frame_tbl->lru->front;
     q_node* prev = NULL;
+    /* Iterate through LRU queue */
     while(((frame_table_entry*)(curr->data_ptr)) != frtbl_ent) {
         if(curr->next == NULL)
             return NULL;
         prev = curr;
         curr = curr->next;
     }
+    /* Remove entry from LRU queue */
     if(curr == frame_tbl->lru->front){
         frame_tbl->lru->front = frame_tbl->lru->front->next;
     }
@@ -51,15 +53,17 @@ Required for local replacement in case a process reaches maximum number of frame
 */
 frame_table_entry* lru_remove_by_pid(frame_table* frame_tbl, int pid){
     if (isEmpty(frame_tbl->lru))
-        return NULL;        /* Won't Happen */
+        return NULL;
     q_node* curr = frame_tbl->lru->front;
     q_node* prev = NULL;
+    /* Iterate through LRU queue */
     while(((frame_table_entry*)(curr->data_ptr))->pid != pid) {
         if(curr->next == NULL)
-            return NULL;    /* Won't Happen */
+            return NULL;
         prev = curr;
         curr = curr->next;
     }
+    /* Remove entry from LRU queue */
     if(curr == frame_tbl->lru->front){
         frame_tbl->lru->front = frame_tbl->lru->front->next;
     }

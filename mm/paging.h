@@ -4,12 +4,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../util/queue.h"
+
+/* Main memory sizes */
 #define MM_SIZE (32*1024*1024)                      /* 32MB */
 #define PG_SIZE 512                                 /* 512B */
 
 /* Page Table Constants */
 #define PG_TBL_ENTRY_SIZE 4
 #define ENTRY_PER_PG (PG_SIZE/PG_TBL_ENTRY_SIZE)    /* 512/4 */
+/* Number of bits to shift to get offsets for different levels of page table heirarchy */ 
 #define PGD_SHIFT 30                                /* Bits to shift to get offset in pgd */
 #define PMD_SHIFT 23
 #define PLD_SHIFT 16
@@ -19,8 +22,8 @@
 #define VALID_MASK 0x10000
 #define DIRTY_MASK 0x20000
 #define WORKING_SET_MASK 0xFFC0000
-#define WORKING_SET_BIT 0x8000000
 #define GLOBAL_MASK 0x10000000
+#define WORKING_SET_BIT 0x8000000
 #define WORKING_SET_SHIFT 18
 
 /* Frame Table Constants */
@@ -41,8 +44,7 @@
     Page global directory(pgd)->Page Middle directory(pmd)->Page Lower directory(pld)->Page Table(pt)->offset
 */
 
-/* Page Table */
-#define is_valid_frame_no(frame_no) (frame_no<NUM_FRAMES)
+/* Marcos related to Page Table */
 #define is_valid_entry(pte) (pte&VALID_MASK)
 
 /* For Page table walk */
@@ -69,7 +71,7 @@
 /* Frame Table */
 typedef struct{
     uint32_t* page_table_entry;
-    int pid;    /* PID=-1 means global frame */
+    int pid;                        /* PID=-1 means global frame */
     bool valid;
 } frame_table_entry;
 
@@ -78,12 +80,13 @@ typedef struct{
     queue* lru;
 } frame_table;
 
+#define is_valid_frame_no(frame_no) (frame_no<NUM_FRAMES)
+
 extern frame_table* init_frame_table();
 
+/* Functions to augment LRU queue */
 extern void lru_move_to_back(frame_table* frame_tbl, frame_table_entry* frtbl_ent);
-
 extern frame_table_entry* lru_remove_by_frame_tbl_entry(frame_table* frame_tbl, frame_table_entry* frtbl_ent);
-
 extern frame_table_entry* lru_remove_by_pid(frame_table* frame_tbl, int pid);
 
 #endif

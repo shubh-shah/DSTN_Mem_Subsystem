@@ -10,20 +10,22 @@ disk_map_entry* init_disk_map_entry(int pid, uint32_t* page_table_entry, int loc
 }
 
 /* 
-    Swap in a page  into frame_number pointed by page_table_entry 
+    Swap in a page into frame pointed to by frame_number from page_table_entry 
     Returns: Success - 0, Failure - 1
 */
 bool swap_in(main_memory* main_mem, task_struct* task, uint32_t* page_table_entry){
     if (isEmpty(main_mem->disk_map))
-        return 1;         /* Page not in disk, Means dirty */
+        return 1;         /* Page not in disk */
     q_node* curr = main_mem->disk_map->front;
     q_node* prev = NULL;
+    /* Iterate through disk map */
     while( (((disk_map_entry*)(curr->data_ptr))->page_table_entry != page_table_entry) && (((disk_map_entry*)(curr->data_ptr))->pid != task->pid) ) {
         if(curr->next == NULL)
-            return 1;     /* Page not in disk, Means dirty */
+            return 1;     /* Page not in disk */
         prev = curr;
         curr = curr->next;
     } 
+    /* Remove the entry */
     if(curr == main_mem->disk_map->front){
         main_mem->disk_map->front = main_mem->disk_map->front->next;
     }
@@ -40,31 +42,32 @@ bool swap_in(main_memory* main_mem, task_struct* task, uint32_t* page_table_entr
 }
 
 /* 
-    Swap a page indicated by frame_entry out of main memory. 
-    Global and clean pages are not swapped out
-    Resets the DIRTY bit
+Swap a page indicated by frame_entry out of main memory. 
+Global and clean pages are not swapped out
+Resets the DIRTY bit
 */
 void swap_out(main_memory* main_mem, task_struct* task, uint32_t* page_table_entry){
-    if((*(page_table_entry))&GLOBAL_MASK){   /* If Global, Don't swap out */
+    if((*(page_table_entry))&GLOBAL_MASK){      /* If Global, Don't swap out */
         return;
     }
-    if((*(page_table_entry))&DIRTY_MASK){    /* If Dirty, only then swap out */
-        uint64_t sec_free_blk_base_address; /*Get a free block in secondary memory */
+    if((*(page_table_entry))&DIRTY_MASK){       /* If Dirty, only then swap out */
+        uint64_t sec_free_blk_base_address;     /*Get a free block in secondary memory */
         push(main_mem->disk_map,init_disk_map_entry(task->pid, page_table_entry, sec_free_blk_base_address));
-        /* Move the frame to this block */
+        /* Can move the frame to the block */
+        /* Mark clean */
         *(page_table_entry) = reset_bit_pgtbl_entry((*(page_table_entry)),DIRTY_MASK);
     }
 }
 
 /*
-    Suspend or Shut a process down.
-    If suspend, then removes all the pages from main memory, invalidates entries in page tables and deallocates the frames.
-    Shudown also deallocates all page tables.
-    Changes status of task to SWAPPED_OUT or FINISHED based on the suspend argument
+Suspend or Shut a process down.
+If suspend, then removes all the pages from main memory, invalidates entries in page tables and deallocates the frames.
+Shudown does all this and also deallocates all page tables.
+Changes status of task to SWAPPED_OUT or FINISHED based on the suspend argument
 */
 void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
     if(suspend){
-        /* Page walk and swap out pages */
+        /* Visit and swap out all pages */
         for(uint32_t pgd_offset=0;pgd_offset<task->ptlr;pgd_offset++){
             uint32_t* pgd_ent = pgd_entry_from_offset(task, pgd_offset);
             if(!is_valid_entry(*pgd_ent)){
@@ -87,8 +90,8 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
                         }
                         *pt_ent = reset_bit_pgtbl_entry(*pt_ent,VALID_MASK);
                         frame_table_entry* frame_entry = page_table_entry_to_frame_table_entry_ptr(main_mem->frame_tbl->table,*pt_ent);
+                        /* If frame not global (handled by the functions), swap unallocate corresponding frames */
                         swap_out(main_mem, task, frame_entry->page_table_entry);
-                        /* If frame not global(handled by the function), unallocate corresponding frames */
                         deallocate_frame(main_mem, frame_entry);
                     }
                 }
@@ -103,6 +106,7 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
             }
         }
     }
+    /* Flush TLB */
     tlb_invalidate(gm_subsys->tlb,task);
     
     if(suspend){
@@ -110,7 +114,7 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
         task->status = SWAPPED_OUT;
     }
     else{
-        /* Clear disk map if process is finished */
+        /* Clear disk map from entries of the process if it is finished */
         if (!isEmpty(main_mem->disk_map)){
             q_node* curr = main_mem->disk_map->front;
             q_node* prev = NULL;

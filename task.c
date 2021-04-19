@@ -2,6 +2,9 @@
 #include "global_variables.h"
 #include "mm/main_memory.h"
 
+/*
+Initialize the list containg all tasks
+*/
 task_list* init_task_list(){
     task_list* tl = malloc(sizeof(task_list));
     tl->list = createQueue(1024);
@@ -9,7 +12,12 @@ task_list* init_task_list(){
     return tl;
 }
 
+/*
+Initialize a task.
+Assign page global directory (pgd), Pre page 2 pages, bookeeping.
+*/ 
 int init_task(task_list* tasks){
+    /* Create a task only if memory not thrashing */
     if(!(gm_subsys->main_mem->thrashing)){
         /* Initialize a new task */
         task_struct* task = malloc(sizeof(task_struct));
@@ -37,6 +45,7 @@ int init_task(task_list* tasks){
             uint32_t* pt_ent = pt_entry(gm_subsys->main_mem->mem_arr, *pld_ent, linear_address[i]);
             do_page_fault(gm_subsys->main_mem, task, pt_ent, linear_address[i], 0);
         }
+        /* Initialise SIG_ATOMIC_MAXtatistics to 0 */
         task->stat.references=0;
         task->stat.l1_read_miss=0;
         task->stat.l1_write_miss=0;
@@ -56,6 +65,9 @@ int init_task(task_list* tasks){
     }
 }
 
+/*
+Get task struct from PID
+*/
 task_struct* find_task(task_list* tasks, int pid){
     if (isEmpty(tasks->list))
         return NULL;
@@ -68,6 +80,9 @@ task_struct* find_task(task_list* tasks, int pid){
     return (task_struct*)curr->data_ptr;
 }
 
+/*
+Set status of task to running if possible
+*/
 bool run_task(task_list* tasks, int pid){
     task_struct* task = find_task(tasks, pid);
     if(task==NULL){
@@ -85,6 +100,9 @@ bool run_task(task_list* tasks, int pid){
     return 1;
 }
 
+/*
+Preempt a running task
+*/
 bool preempt_task(task_list* tasks, int pid){
     task_struct* task = find_task(tasks, pid);
     if(task==NULL){
@@ -96,6 +114,10 @@ bool preempt_task(task_list* tasks, int pid){
     return 1;
 }
 
+/*
+Kill a task
+Remove all pages and page tables from memory.
+*/
 bool destroy_task(task_list* tasks, int pid){
     if (isEmpty(tasks->list))
         return 0;

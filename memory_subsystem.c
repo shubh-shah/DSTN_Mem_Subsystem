@@ -11,6 +11,7 @@ memory_subsystem* init_memory_subsystem(){
 }
 
 /*
+    High level function to load or store a byte.
     Input:
         Linear address = 32 bits (4bytes-int)
     Returns:

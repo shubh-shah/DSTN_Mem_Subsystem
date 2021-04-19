@@ -10,6 +10,7 @@
 
 task_list* gtasks;
 memory_subsystem* gm_subsys;
+/* For displaying statistics */
 int working_set_counts[100];
 int working_set_counts_index=0;
 int frequency_thrashing=0;
@@ -23,6 +24,7 @@ int main(){
     traces[3]=fopen("inputs/2019_20_IISEM_M88KSIM.txt","r");
     traces[4]=fopen("inputs/2019_20_IISEM_VORTEX.txt","r");
 
+    /* Initialize main memory and tasks */
     gm_subsys = init_memory_subsystem();
     printf("Memory System Started!\n");
     gtasks = init_task_list();
@@ -49,7 +51,7 @@ int main(){
     printf("Tasks Initialised!\n");
     int curr_task=0;
     uint32_t logical_address;
-    int64_t previous_address[5]={-1,-1,-1,-1,-1}; /*Storing previous address in case of page fault */
+    int64_t previous_address[5]={-1,-1,-1,-1,-1}; /* For Storing previous address in case of page fault */
     while(!isEmpty(gtasks->list)){
         if(run_task(gtasks, pid[curr_task])){
             int allowed_refrences = (rand()%100+150);
@@ -58,8 +60,10 @@ int main(){
                 if((find_task(gtasks, pid[curr_task]))->status!=RUNNING){
                     break;
                 }
+                /* Scan new address only if page fault has not occured on previous try else call for the previous address*/
                 if(previous_address[curr_task] == -1){
                     if(fscanf(traces[curr_task],"%x",&logical_address)<=0){
+                        /* If no more input, print statistics and kill the process */
                         printf("--------------------------------------\nTask %d Finished. ",pid[curr_task]);fflush(stdout);
                         task_struct* task = find_task(gtasks, pid[curr_task]);
                         printf("Statistics:\n\tReferences: %Ld\n\t",task->stat.references);
@@ -89,6 +93,7 @@ int main(){
                 else{
                     logical_address = previous_address[curr_task];
                 }
+                /* Reset previous address to -1, set to valid address only if page fault occurs */
                 previous_address[curr_task] = -1;
                 if( (logical_address&0x7F000000) == 0x7F000000){
                     /* code_segment - only load*/
@@ -98,7 +103,7 @@ int main(){
                     }          
                 }
                 else{
-                    /* rand()%2 decides the op:load or store */
+                    /* rand()%2 decides the op: load or store */
                     if(error = load_store_byte(gm_subsys, (find_task(gtasks, pid[curr_task])), logical_address,rand()%2)){
                         previous_address[curr_task] = logical_address;
                         break;    /* Page fault */  
@@ -110,6 +115,7 @@ int main(){
         }
         curr_task=(curr_task+1)%5;
     }
+    /* Print overall statistics */
     printf("-------------------------------------\nOverall Statistics:\n\tWorking set sizes at different points:\n\t\t");
     for(int i=0;i<working_set_counts_index;i++){
         printf("%d ",working_set_counts[i]);
@@ -122,12 +128,10 @@ int main(){
     printf("Page faults for pages: %Ld (/%Ld)\n\tPage Faults for page tables: %Ld\n\t",page_fault,references,page_fault_pt);
     printf("Page replacements: %Ld\n\t",page_replacements);
     printf("Maximum working set size: %Ld\n\t",max_working_set);
-    printf("No of times thrashing occured: %Ld\n\t",frequency_thrashing);
+    printf("No of times thrashing occured: %d\n\t",frequency_thrashing);
     printf("Context Switches: %Ld\n",context_switches);
     printf("Simulation Done!\n");
 }
 
-// Beautification
 // frame_table_entry* free_frames_list;
-// Locking for woorking set swap
 // Free

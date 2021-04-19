@@ -28,12 +28,13 @@ main_memory* init_main_memory(){
 }
 
 /*
-    Input:
-        Linear Address (25 bits)
-    Returns:
-        Successful 0
-        Invalid Refrence
-        Page Fault
+Do page table walk and push the entry into TLB
+Input:
+    Linear Address (25 bits)
+Returns:
+    Successful 0
+    Invalid Refrence
+    Page Fault
 */
 uint32_t do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_struct* task, uint32_t linear_address){
     /* Page table walk */
@@ -68,7 +69,7 @@ uint32_t do_page_table_walk(main_memory* main_mem, trans_look_buff* tlb, task_st
 }
 
 /*
-    Page fault handling
+Page fault handling
 */
 struct pass_pg_fault{
     main_memory* main_mem;
@@ -77,7 +78,7 @@ struct pass_pg_fault{
     bool is_pgtbl;
     task_struct* task;
 };
-/* Seprate functions not really required, needed if using separate thread */
+/* Seprate functions not _do_page_fault & do_page_fault really required, needed if using separate thread */
 void* _do_page_fault(void* args){
     /* Get Arguments */
     uint32_t* entry = ((struct pass_pg_fault*) args)->invalid_entry;
@@ -85,12 +86,14 @@ void* _do_page_fault(void* args){
     main_memory* main_mem = ((struct pass_pg_fault*) args)->main_mem;
     task_struct* task = ((struct pass_pg_fault*) args)->task;
     free((struct pass_pg_fault*) args);
+    /* Return directly if already valid */
     if(is_valid_entry(*entry)){
         return NULL;
     }
 
     uint32_t frame_no;
-    int is_global = !(rand()%256);  /* Probability = 1/256 */
+    /* Randomly decide if a page is global or not */
+    int is_global = !(rand()%256);              /* Probability = 1/256 */
     if(is_global){
         frame_no = get_global_zeroed_page(main_mem, task, entry, is_pgtbl);
     }
@@ -100,10 +103,12 @@ void* _do_page_fault(void* args){
     /* Update page table entry */
     *entry = frame_no;
     if(!is_pgtbl){
-        if(swap_in(main_mem, task, entry)){     /* Page not in disk, Means dirty */
+        if(swap_in(main_mem, task, entry)){
+            /* Page not in disk, Means mark dirty */
             *entry |= DIRTY_MASK;
         }
         else{
+            /* Page fresh out of disk, means mark clean */
             *entry = reset_bit_pgtbl_entry((*entry),DIRTY_MASK);
         }
     }
@@ -116,7 +121,7 @@ void* _do_page_fault(void* args){
     return NULL;
 }
 /*
-    This routine handles page faults.
+This routine handles page faults.
 */
 void do_page_fault(main_memory* main_mem, task_struct* task, uint32_t* invalid_entry, uint32_t linear_address, bool is_pgtbl){
     if(is_pgtbl){
@@ -166,8 +171,8 @@ void deallocate_frame(main_memory* main_mem, frame_table_entry* entry){
 }
 
 /* 
-    Allocate a frame to a process.
-    If all frames occupied, LRU replacement.
+Allocate a frame to a process.
+If all frames occupied, LRU replacement.
 */
 uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl){
     frame_table_entry* lru_entry;
@@ -211,7 +216,10 @@ uint32_t get_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgt
     }
     return frame_no;
 }
-
+/* 
+Allocate a global frame to a process.
+If all frames occupied, LRU replacement.
+*/
 uint32_t get_global_zeroed_page(main_memory* main_mem, task_struct* task, uint32_t* pgtbl_entry, bool is_pgtbl){
     uint32_t frame_no = get_zeroed_page(main_mem, task, pgtbl_entry, is_pgtbl);
     lru_remove_by_frame_tbl_entry(main_mem->frame_tbl, main_mem->frame_tbl->table+frame_no);    /* Remove from lru queue to make it non replaceable */
@@ -242,11 +250,11 @@ void write_main_memory(main_memory* main_mem, trans_look_buff* tlb, uint32_t phy
 }
 
 /*
-    Periodically called to detect thrashing
+Periodically called via interrupts to detect thrashing
 */
 void working_set_interrupt_handler(int sig){
     int count_per_process[gtasks->list->node_count];
-    int total_count=0;  /* Total Frame Count */
+    int total_count=0;                                  /* Total Frame Count */
     if (isEmpty(gtasks->list))
         return;
     q_node* curr = gtasks->list->front;
@@ -256,9 +264,9 @@ void working_set_interrupt_handler(int sig){
         task_struct* task = ((task_struct*)(curr->data_ptr));
         count_per_process[i]=0;
         
-
         /* Don't bother if already swapped out */
         if(task->status != SWAPPED_OUT){
+            /* Visit all pages */
             for(uint32_t pgd_offset=0;pgd_offset<task->ptlr;pgd_offset++){
                 uint32_t* pgd_ent = pgd_entry_from_offset(task, pgd_offset);
                 if(!is_valid_entry(*pgd_ent)){
