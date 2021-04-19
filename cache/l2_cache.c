@@ -1,4 +1,5 @@
 #include "l2_cache.h"
+#include "../global_variables.h"
 
 l2_cache *init_l2_cache() {
     l2_cache *cache = (l2_cache *) malloc(sizeof(l2_cache));

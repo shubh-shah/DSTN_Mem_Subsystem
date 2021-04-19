@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "../global_variables.h"
 #include "../mm/main_memory.h"
 #include "../util/queue.h"
 

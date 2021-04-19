@@ -6,6 +6,15 @@ trans_look_buff *init_tlb() {
     return tlb;
 }
 
+/*
+   Searches the TLB for the Frame Number corresponding to the Linear Address.
+   Input:
+       Pointer to the task accessing the tlb
+       Linear Address
+    Returns:
+       Frame Number if TLB hit.
+       UINT32_MAX if TLB miss.
+*/
 uint32_t get_frame_no_tlb(trans_look_buff *tlb, task_struct *task, uint32_t linear_address) {
 
     uint32_t requested_page_no = linear_address >> NUM_BITS_OFFSET;
@@ -23,11 +32,15 @@ uint32_t get_frame_no_tlb(trans_look_buff *tlb, task_struct *task, uint32_t line
         node = node->next;
     }
 
-    // TLB Miss
     task->stat.tlb_miss++;
     return UINT32_MAX;
 }
 
+/*
+   Invalidates all the entries corresponding to the task which are not shared.
+   Input:
+       Pointer to the terminating task
+*/
 void tlb_invalidate(trans_look_buff *tlb, task_struct *task) {
 
     q_node *node = tlb->front;
@@ -43,6 +56,13 @@ void tlb_invalidate(trans_look_buff *tlb, task_struct *task) {
     }
 }
 
+/*
+   Adds a new entry at the front of the TLB.
+   Input:
+       Pointer to the task modifying the tlb
+       Linear Address
+       Page Table Entry
+*/
 void insert_tlb_entry(trans_look_buff *tlb, task_struct *task, uint32_t linear_address, uint32_t page_tbl_entry) {
     tlb_entry *new_entry = (tlb_entry *) malloc(sizeof(tlb_entry));
     new_entry->valid = true;
@@ -57,7 +77,11 @@ void insert_tlb_entry(trans_look_buff *tlb, task_struct *task, uint32_t linear_a
     tlb_push(tlb, new_entry);
 }
 
-/* Returns 1 on succcess 0 on failure */
+/*
+   Sets the dirty bit in TLB, so that it gets written to main memory during replacement
+   Input:
+       Frame Number
+*/
 void set_dirty_bit_tlb(trans_look_buff *tlb, uint32_t frame_no){
     q_node *node = tlb->front;
     tlb_entry *entry;
@@ -72,7 +96,11 @@ void set_dirty_bit_tlb(trans_look_buff *tlb, uint32_t frame_no){
     }
 }
 
-/* If replacement occurs, write the page table entry back to main memory as working set and dirty bits might have been updated */
+/* 
+   If replacement occurs, write the page table entry back to main memory as working set and dirty bits might have been updated.
+   Input:
+       Page Table Entry
+*/
 void tlb_push(trans_look_buff *tlb, tlb_entry* entry){
     if (isFull(tlb)){
         q_node* node = pop(tlb);
