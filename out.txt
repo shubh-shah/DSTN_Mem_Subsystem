@@ -37,56 +37,66 @@ make[1]: Leaving directory '/mnt/d/Projects/Assignments/DSTN/DSTN_Mem_Subsystem/
 gcc -o driver driver.c memory_subsystem.o mm/paging.o mm/swap.o mm/main_memory.o ADT/queue.o tlb/tlb.o cache/l1_cache.o cache/l2_cache.o task.o -lpthread
 Memory System Started!
 Tasks Initialised!
-Task 4 Finished.
-Statistics:
-References: 12280
-TLB Misses: 412
-L1 Miss: 12225
-L1 Miss: 643
-Page Faults for page tables: 50
-Page faults for pages: 5
-Page replacements: 0
-Maximum working set size: 0
-Task 0 Finished.
-Statistics:
-References: 54700
-TLB Misses: 1496
-L1 Miss: 54605
-L1 Miss: 1516
-Page Faults for page tables: 89
-Page faults for pages: 6
-Page replacements: 0
-Maximum working set size: 84
-Task 3 Finished.
-Statistics:
-References: 30875
-TLB Misses: 810
-L1 Miss: 30498
-L1 Miss: 4635
-Page Faults for page tables: 307
-Page faults for pages: 5
-Page replacements: 0
-Maximum working set size: 282
-Task 2 Finished.
-Statistics:
-References: 90711
-TLB Misses: 2897
-L1 Miss: 90587
-L1 Miss: 3270
-Page Faults for page tables: 120
-Page faults for pages: 4
-Page replacements: 0
-Maximum working set size: 114
-Task 1 Finished.
-Statistics:
-References: 223646
-TLB Misses: 4687
-L1 Miss: 222986
-L1 Miss: 4152
-Page Faults for page tables: 296
-Page faults for pages: 8
-Page replacements: 0
-Maximum working set size: 239
-Overall Statistics
-Working set sizes:
-300 425 468 516 543 594 234 252 282 353 215 199 212 206 202 200 193 147 121 93 72 65 
+--------------------------------------
+Task 4 Finished. Statistics:
+	References: 12280
+	TLB Misses: 412
+	L1 Miss: 12225
+	L2 Miss: 643
+	Page faults for pages: 50
+	Page Faults for page tables: 5
+	Page replacements: 0
+	Maximum working set size: 50
+--------------------------------------
+Task 0 Finished. Statistics:
+	References: 54700
+	TLB Misses: 1496
+	L1 Miss: 54605
+	L2 Miss: 1516
+	Page faults for pages: 89
+	Page Faults for page tables: 6
+	Page replacements: 0
+	Maximum working set size: 84
+--------------------------------------
+Task 3 Finished. Statistics:
+	References: 30875
+	TLB Misses: 810
+	L1 Miss: 30498
+	L2 Miss: 4635
+	Page faults for pages: 307
+	Page Faults for page tables: 5
+	Page replacements: 0
+	Maximum working set size: 309
+--------------------------------------
+Task 2 Finished. Statistics:
+	References: 90711
+	TLB Misses: 2897
+	L1 Miss: 90587
+	L2 Miss: 3270
+	Page faults for pages: 120
+	Page Faults for page tables: 4
+	Page replacements: 0
+	Maximum working set size: 89
+--------------------------------------
+Task 1 Finished. Statistics:
+	References: 223646
+	TLB Misses: 4687
+	L1 Miss: 222986
+	L2 Miss: 4152
+	Page faults for pages: 296
+	Page Faults for page tables: 8
+	Page replacements: 0
+	Maximum working set size: 186
+-------------------------------------
+Overall Statistics:
+	Working set sizes at different points:
+		277 354 415 450 477 504 526 562 597 541 170 150 162 207 231 167 186 183 182 184 186 148 123 103 90 88 64 57 45 31 29 23 23 23 19 34 43 
+	References: 412212
+	TLB Misses: 10302
+	L1 Miss: 410901
+	L2 Miss: 14216
+	Page faults for pages: 862
+	Page Faults for page tables: 28
+	Page replacements: 0
+	Maximum working set size: 718
+Simulation Done!

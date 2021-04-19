@@ -32,6 +32,15 @@ int main(){
             sleep(1);
         } 
     }
+    /* Overall Statistics */
+    long long int references = 0;
+    long long int tlb_miss = 0;
+    long long int l2_miss = 0; 
+    long long int l1_miss = 0; 
+    long long int page_fault = 0; 
+    long long int page_fault_pt = 0; 
+    long long int page_replacements = 0;
+    long long int max_working_set = 0; 
     printf("Tasks Initialised!\n");
     int curr_task=0;
     uint32_t logical_address;
@@ -46,13 +55,21 @@ int main(){
                 }
                 if(previous_address[curr_task] == -1){
                     if(fscanf(traces[curr_task],"%x",&logical_address)<=0){
-                        printf("Task %d Finished.\n",pid[curr_task]);fflush(stdout);
+                        printf("--------------------------------------\nTask %d Finished. ",pid[curr_task]);fflush(stdout);
                         task_struct* task = find_task(pid[curr_task]);
-                        printf("Statistics:\nReferences: %Ld\nTLB Misses: %Ld\n",task->stat.references,task->stat.tlb_miss);
-                        printf("L1 Miss: %Ld\nL2 Miss: %Ld\n",task->stat.l1_miss,task->stat.l2_miss);
-                        printf("Page Faults for page tables: %Ld\nPage faults for pages: %Ld\n",task->stat.page_fault,task->stat.page_fault_pt);
-                        printf("Page replacements: %Ld\n",task->stat.page_replacements);
+                        printf("Statistics:\n\tReferences: %Ld\n\tTLB Misses: %Ld\n\t",task->stat.references,task->stat.tlb_miss);
+                        printf("L1 Miss: %Ld\n\tL2 Miss: %Ld\n\t",task->stat.l1_miss,task->stat.l2_miss);
+                        printf("Page faults for pages: %Ld\n\tPage Faults for page tables: %Ld\n\t",task->stat.page_fault,task->stat.page_fault_pt);
+                        printf("Page replacements: %Ld\n\t",task->stat.page_replacements);
                         printf("Maximum working set size: %Ld\n",task->stat.max_working_set);
+                        references+=task->stat.references;
+                        tlb_miss+=task->stat.tlb_miss;
+                        l2_miss+=task->stat.l2_miss;
+                        l1_miss+=task->stat.l1_miss;  
+                        page_fault+=task->stat.page_fault; 
+                        page_fault_pt+=task->stat.page_fault_pt;
+                        page_replacements+=task->stat.page_replacements;
+                        max_working_set+=task->stat.max_working_set; 
                         destroy_task(pid[curr_task]);
                         break;
                     }
@@ -80,9 +97,14 @@ int main(){
         }
         curr_task=(curr_task+1)%5;
     }
-    printf("Overall Statistics\nWorking set sizes:\n");
+    printf("-------------------------------------\nOverall Statistics:\n\tWorking set sizes at different points:\n\t\t");
     for(int i=0;i<working_set_counts_index;i++){
         printf("%d ",working_set_counts[i]);
     }
-    printf("\n");
+    printf("\n\tReferences: %Ld\n\tTLB Misses: %Ld\n\t",references,tlb_miss);
+    printf("L1 Miss: %Ld\n\tL2 Miss: %Ld\n\t",l1_miss,l2_miss);
+    printf("Page faults for pages: %Ld\n\tPage Faults for page tables: %Ld\n\t",page_fault,page_fault_pt);
+    printf("Page replacements: %Ld\n\t",page_replacements);
+    printf("Maximum working set size: %Ld\n",max_working_set);
+    printf("Simulation Done!\n");
 }
