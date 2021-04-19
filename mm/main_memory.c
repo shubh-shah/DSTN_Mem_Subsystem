@@ -140,7 +140,7 @@ void deallocate_frame(main_memory* main_mem, frame_table_entry* entry){
         /* Update Frame Table Entry */
         entry->valid = 0;
         /* Update Page Table Entry */
-        (*entry->page_table_entry) = reset_bit_pgtbl_entry(*(entry->page_table_entry),VALID_MASK);
+        (*(entry->page_table_entry)) = reset_bit_pgtbl_entry(*(entry->page_table_entry),VALID_MASK);
         /* Update LRU Queue */
         lru_remove_by_frame_tbl_entry(main_mem->frame_tbl, entry);
         /* Update Global Counters */
@@ -260,18 +260,25 @@ void working_set_interrupt_handler(int sig){
                         }
                         for(uint32_t pt_offset=0;pt_offset<ENTRY_PER_PG;pt_offset++){
                             uint32_t* pt_ent = pt_entry_from_offset(gm_subsys->main_mem->mem_arr, *pld_ent, pt_offset);
-                            if(!is_valid_entry(*pt_ent)){
-                                continue;
-                            }
+                            // if(!is_valid_entry(*pt_ent)){
+                            //     continue;
+                            // }
                             /* Get the working set bits */
                             uint32_t working_set_bits = (*pt_ent)&WORKING_SET_MASK;
                             if(working_set_bits){
                                 count_per_process[i]++;
                             }
                             /* Right shift */
+                            // if(*pt_ent!=0){
+                            //     printf("%x\n",*pt_ent);
+                            // }
                             working_set_bits = (working_set_bits>>(WORKING_SET_SHIFT+1))<<WORKING_SET_SHIFT;
                             (*pt_ent) = reset_bit_pgtbl_entry((*pt_ent),WORKING_SET_MASK);
                             (*pt_ent) |= working_set_bits; 
+                            
+                            // if(*pt_ent!=0){
+                            //     printf("%x\n",*pt_ent);
+                            // }
                         }
                     }
                 }
@@ -281,6 +288,7 @@ void working_set_interrupt_handler(int sig){
         i++;
         curr = curr->next;
     }
+    printf("Thrashing Count: %d\n",total_count);
     if(total_count>=UPPER_LIMIT_THRASHING){
         printf("Thrashing Detected %d! Slow down\n",total_count);
         /* Block new processes or swapped out processes */

@@ -18,6 +18,7 @@ memory_subsystem* init_memory_subsystem(){
         Failure(1): Value of mem->reg set to error code
 */
 bool load_store_byte(memory_subsystem* mem, task_struct* task, uint32_t linear_address, bool load){
+    // printf("Start %d\n",linear_address);fflush(stdout);
     uint32_t offset,frame_no;
 restart:
     /* Split Linear Address */
@@ -36,6 +37,7 @@ restart:
         goto restart;
     }
     uint32_t physical_address = (frame_no<<PT_SHIFT)+offset;
+    // printf("Got Physical Address %x\n",physical_address);fflush(stdout);fflush(stdout);
     if(load){
         if(!read_l1_cache(mem->l1cache,physical_address)){
             /* Look Through for l1*/

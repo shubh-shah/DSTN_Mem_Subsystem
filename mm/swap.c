@@ -98,7 +98,7 @@ void unload_task(main_memory* main_mem, task_struct* task, bool suspend){
     else{
         /* If finishing, unallocate every frame allocated, including page tables */
         for(int i=0;i<NUM_FRAMES;i++){
-            if(main_mem->frame_tbl->table[i].pid==task->pid){
+            if(main_mem->frame_tbl->table[i].pid==task->pid && main_mem->frame_tbl->table[i].valid==1){
                 deallocate_frame(main_mem, main_mem->frame_tbl->table+i);
             }
         }

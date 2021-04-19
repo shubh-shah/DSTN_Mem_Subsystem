@@ -10,8 +10,8 @@
 /* Thrashing Prevention */
 #define MAX_FRAMES_PER_TASK (24*1024)       /* 24K */
 #define MIN_FRAMES_PER_TASK 16
-#define WORKING_SET_WINDOW 10000            /* microseconds */
-#define TIMER_INTERVAL 1000                 /* microiseconds */
+#define WORKING_SET_WINDOW 1000000            /* microseconds */
+#define TIMER_INTERVAL 100000                 /* microiseconds */
 #define WORKING_SET_BITS 10
 #define LOWER_LIMIT_THRASHING ((NUM_FRAMES*3)/4)
 #define UPPER_LIMIT_THRASHING NUM_FRAMES

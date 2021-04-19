@@ -37,12 +37,15 @@ int main(){
     while(!isEmpty(gtasks->list)){
         if(run_task(pid[curr_task])){
             int allowed_refrences = (rand()%100+150);
-            printf("Task %d started.\n",pid[curr_task]);
             int error;
-            while(allowed_refrences-- && (find_task(pid[curr_task]))->status==RUNNING){
+            while(allowed_refrences-- && find_task(pid[curr_task])!=NULL){
+                if((find_task(pid[curr_task]))->status!=RUNNING){
+                    break;
+                }
                 if(previous_address[curr_task] == -1){
                     if(fscanf(traces[curr_task],"%x",&logical_address)<=0){
                         destroy_task(pid[curr_task]);
+                        printf("Task %d Finished.\n",pid[curr_task]);fflush(stdout);
                         break;
                     }
                 }

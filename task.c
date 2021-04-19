@@ -19,6 +19,7 @@ int init_task(){
         task->status = READY;
         gtasks->next_pid++;
         /* Allocate frame for pgd */
+        task->pgd = malloc(sizeof(uint32_t));
         uint32_t frame_no = get_zeroed_page(gm_subsys->main_mem,task,task->pgd,1);
         task->pgd = ((uint32_t*)(gm_subsys->main_mem->mem_arr+(frame_no<<PT_SHIFT))); 
         push(gtasks->list, task);
@@ -94,6 +95,7 @@ bool destroy_task(int pid){
         prev = curr;
         curr = curr->next;
     }
+    unload_task(gm_subsys->main_mem,(task_struct*)curr->data_ptr,0);    /* Imported from main_memory.h */
     if(curr == gtasks->list->front){
         gtasks->list->front = gtasks->list->front->next;
     }
@@ -104,7 +106,6 @@ bool destroy_task(int pid){
         gtasks->list->rear = prev;
     }
     gtasks->list->node_count--;
-    unload_task(gm_subsys->main_mem,(task_struct*)curr->data_ptr,0);    /* Imported from main_memory.h */
     free(curr->data_ptr);
     free(curr);
     return 1;
